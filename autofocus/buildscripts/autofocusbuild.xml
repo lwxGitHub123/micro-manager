@@ -1,0 +1,44 @@
+<project name="mm.autofocusbuild">
+	<include file="../../buildscripts/buildprops.xml"/>
+
+	<property name="product" value="${ant.project.name}"/>
+	<property name="srcdir" location=".."/>
+	<if>
+		<isset property="mm.platform.is.windows"/>
+		<then>
+			<property name="intdir" location="${mm.java.autofocus.intdir}/${product}"/>
+			<property name="outdir" location="${mm.java.autofocus.outdir}"/>
+			<property name="installdir" location="${mm.java.autofocus.installdir}"/>
+		</then>
+		<else>
+			<property name="intdir" location="../build/${product}"/>
+			<property name="outdir" location=".."/>
+			<!-- install is not used on Unix -->
+		</else>
+	</if>
+
+	<import file="../../buildscripts/javabuild.xml"/>
+
+	<path id="project.classpath">
+        <path refid="mm.compile.classpath"/>
+		<pathelement location="${mm.java.lib.mmcorej}"/>
+		<pathelement location="${mm.java.lib.mmstudio}"/>
+		<pathelement location="${mm.java.mmlibraries}"/>
+      <fileset dir="${mm.java.mmlibraries}" includes="*.jar" />
+	</path>
+
+	<path id="project.linked.jars">
+		<pathelement location="${mm.java.lib.mmcorej}"/>
+		<pathelement location="${mm.java.lib.mmstudio}"/>
+		<pathelement location="${mm.java.mmlibraries}"/>
+      <fileset dir="${mm.java.mmlibraries}" includes="*.jar" />
+	</path>
+
+	<target name="compile" depends="prepare" description="Compile Java source">
+		<mkdir dir="${intdir}"/>
+		<mm-javac srcdir="${srcdir}" destdir="${intdir}">
+			<include name="${sourcefile}"/>
+			<classpath refid="project.classpath"/>
+		</mm-javac>
+	</target>
+</project>
