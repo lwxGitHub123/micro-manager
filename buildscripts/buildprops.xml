@@ -1,0 +1,181 @@
+<project name="mm.props">
+	<!-- Path of repository root, from the project basedir -->
+	<dirname property="mm.basedir" file="${ant.file.mm.props}/.."/>
+	<property name="mm.cpp.srcdir" value="${mm.basedir}/mmCoreAndDevices"/>
+
+	<!-- Get classpaths of retrieved JARs -->
+	<include file="fetchdeps.xml"/>
+
+	<!-- Extra tasks from ant-contrib -->
+	<!-- Detect the case where the user has never run fetchdeps -->
+	<fail message="Please run 'ant -f buildscripts/fetchdeps.xml' first. (If you get errors, try deleting the 'dependencies' directory and starting over.)">
+		<condition>
+			<not>
+				<resourceexists>
+					<file file="${mm.ivy.lib.dir}/build/ant-contrib-1.0b3.jar"/>
+				</resourceexists>
+			</not>
+		</condition>
+	</fail>
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties">
+		<classpath>
+			<fileset dir="${mm.ivy.lib.dir}/build" includes="*.jar"/>
+		</classpath>
+	</taskdef>
+
+	<!-- Global definitions for building Micro-Manager -->
+
+	<!-- This file should contain property, reference, and macro
+	     definitions but no targets. Everything defined in this file should
+	     have the "mm" prefix. -->
+
+	<!-- Import OS environment variables -->
+	<property environment="mm.env"/>
+
+	<!-- Whether to skip nonessential components that don't build -->
+	<property name="mm.build.failonerror" value="true"/>
+
+	<!-- Whether to use Fiji-compatible directory structure -->
+	<property name="mm.build.for.imagej2updater" value="false"/>
+
+	<!-- Pass options to all invocations of javac -->
+	<property name="mm.javacflags" value=""/>
+
+	<!-- Get the properties for platform, arch, etc. -->
+	<include file="Ant/target.xml"/>
+
+	<!-- Properties dependent on the build system (Windows: Ant; Unix: GNU
+	     Autotools) -->
+	<if>
+		<isset property="mm.platform.is.windows"/>
+		<then>
+			<include file="Ant/windowsprops.xml"/>
+		</then>
+		<else>
+			<include file="Ant/unixprops.xml"/>
+		</else>
+	</if>
+
+	<!-- Items not in source tree but at fixed location -->
+	<property name="mm.thirdpartypublic" location="${mm.basedir}/../3rdpartypublic"/>
+
+	<!-- Compiling Java -->
+	<presetdef name="mm-ant-javac">
+		<javac debug="on" debuglevel="lines,vars,source"
+			optimize="on" deprecation="on"
+			source="1.8" target="1.8" includeAntRuntime="true">
+			<compilerarg value="-Xlint"/>
+			<compilerarg line="${mm.javacflags}"/>
+		</javac>
+	</presetdef>
+	<presetdef name="mm-javac">
+		<javac debug="on" debuglevel="lines,vars,source"
+			optimize="on" deprecation="on"
+			source="1.8" target="1.8" includeAntRuntime="false">
+			<compilerarg value="-Xlint:all,-path,-serial"/>
+			<compilerarg line="${mm.javacflags}"/>
+		</javac>
+	</presetdef>
+
+	<macrodef name="mm-jar">
+		<attribute name="basedir"/>
+		<attribute name="destfile"/>
+		<element name="manifest-elements" optional="true" implicit="true"/>
+		<sequential>
+			<property name="manifest" location="@{basedir}/MANIFEST.MF"/>
+			<manifest file="${manifest}">
+				<manifest-elements/>
+			</manifest>
+			<jar basedir="@{basedir}" destfile="@{destfile}"
+				compress="true" index="true" indexMetaInf="true"
+				manifest="${manifest}"/>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="mm-cljc">
+		<attribute name="namespace"/>
+		<attribute name="srcdir"/>
+		<attribute name="destdir"/>
+		<element name="clj-classpath" optional="false"/>
+		<sequential>
+			<!-- The Clojure compiler is slow, even if all files
+			     are up to date. Bypass the compiler when no
+			     (existing) output files are older than the newest
+			     source file. After unusual operations (such as
+			     removing a Clojure source file or manually
+			     deleting a .class file), the build tree needs to
+			     be cleaned (or another source file should be
+			     touched). -->
+			<!-- The outofdate task is provided by ant-contrib -->
+			<outofdate property="clj.classes.outofdate">
+				<sourcefiles>
+					<fileset dir="@{srcdir}"/>
+				</sourcefiles>
+				<targetfiles>
+					<fileset dir="@{destdir}"/>
+				</targetfiles>
+				<sequential>
+					<java classname="clojure.lang.Compile" fork="true" failonerror="true">
+						<arg value="@{namespace}"/>
+						<sysproperty key="clojure.compile.path" value="@{destdir}"/>
+						<sysproperty key="java.library.path" value="${mm.build.java.library.path}"/>
+						<sysproperty key="java.awt.headless" value="true"/>
+						<classpath>
+							<pathelement location="@{destdir}"/>
+							<pathelement location="@{srcdir}"/>
+							<fileset dir="${mm.ivy.lib.dir}/compile" includes="clojure-*.jar"/>
+							<clj-classpath/>
+						</classpath>
+					</java>
+					<!-- The clojure.core.cache library fails to load if
+						 AOT-compiled. But just removing it results in
+						 class-not-found errors. Removing all but the Java
+						 interop classes fixes the issue. -->
+					<delete>
+						<fileset dir="@{destdir}" includes="clojure/core/cache*.class"/>
+					</delete>
+				</sequential>
+			</outofdate>
+		</sequential>
+	</macrodef>
+
+	<!-- Compile a Java class for a Clojure project, but do not AOT compile
+	     the Clojure source -->
+	<macrodef name="mm-clj-genclass">
+		<attribute name="namespace"/>
+		<attribute name="genclass"/>
+		<attribute name="srcdir"/>
+		<attribute name="scratchdir"/>
+		<attribute name="destdir"/>
+		<element name="cljc-elements" implicit="true"/>
+		<sequential>
+			<!-- Convert "com.example.package.Class" to
+			     "com/example/package/Class" -->
+			<property name="genclass.classname" value="@{genclass}"/>
+			<loadresource property="genclass.path">
+				<propertyresource name="genclass.classname"/>
+				<filterchain>
+					<tokenfilter>
+						<filetokenizer/>
+						<replacestring from="." to="/"/>
+					</tokenfilter>
+				</filterchain>
+			</loadresource>
+
+			<mkdir dir="${scratchdir}"/>
+			<mm-cljc namespace="@{namespace}" srcdir="@{srcdir}"
+				destdir="${scratchdir}">
+				<cljc-elements/>
+			</mm-cljc>
+
+			<!-- Copy the compiled Java class only -->
+			<copy tofile="@{destdir}/${genclass.path}.class"
+				file="${scratchdir}/${genclass.path}.class"/>
+
+			<!-- Copy Clojure source files -->
+			<copy todir="@{destdir}">
+				<fileset dir="@{srcdir}" includes="**/*.clj"/>
+			</copy>
+		</sequential>
+	</macrodef>
+</project>

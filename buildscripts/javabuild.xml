@@ -1,0 +1,180 @@
+<project name="mm.javabuild">
+	<!-- This file is intended to be used via 'import' in each Java
+		 project's buildfile -->
+
+	<include file="buildprops.xml"/>
+
+	<!-- Default settings (importing buildfile can override) -->
+	<!-- intdir - where to put tree of *.class
+		 outdir - where to put JAR
+		 installdir - where to install JAR
+		 scratchdir - used only by clojurebuild_noaot
+		 (intdir and scratchdir must not be shared with other projects)
+		 -->
+	<property name="product" value="${ant.project.name}"/>
+	<property name="srcdir" value="src/main/java"/>
+	<property name="testdir" value="src/test/java"/>
+	<property name="rscdir" value="src/main/resources"/>
+	<property name="scriptdir" value="src/main/scripts"/>
+	<property name="testrscdir" value="src/test/resources"/>
+	<if>
+		<isset property="mm.platform.is.windows"/>
+		<then>
+			<property name="scratchdir" location="${mm.java.intdir}/genclass-tmp/${product}"/>
+			<property name="intdir" location="${mm.java.intdir}/${product}"/>
+			<property name="outdir" location="${mm.java.outdir}"/>
+			<property name="test.intdir" location="${mm.java.test.intdir}/${product}"/>
+			<property name="test.reportdir" location="${mm.java.test.reportdir}/${product}"/>
+			<property name="installdir" location="${mm.java.installdir}"/>
+		</then>
+		<else>
+			<property name="scratchdir" location="genclass-tmp"/>
+			<property name="intdir" location="build"/>
+			<property name="outdir" location="."/>
+			<property name="test.intdir" location="test-build"/>
+			<property name="test.reportdir" location="test-reports"/>
+			<!-- install is not used on Unix -->
+		</else>
+	</if>
+
+	<!-- Settings that are normally not overridden -->
+	<property name="jarfilename" value="${product}.jar"/>
+	<property name="jarfile" value="${outdir}/${product}.jar"/>
+
+	<!-- Global default classpath -->
+	<path id="mm.compile.classpath">
+		<fileset dir="${mm.ivy.lib.dir}/compile" includes="*.jar"/>
+		<fileset dir="${mm.ivy.lib.dir}/optional" includes="*.jar"/>
+		<fileset dir="${mm.ivy.lib.dir}/imagej" includes="*.jar"/>
+	</path>
+
+	<!-- Default classpath (override after the 'import' element) -->
+	<path id="project.classpath">
+		<path refid="mm.compile.classpath"/>
+	</path>
+
+	<!-- Default classpath for unit tests -->
+	<path id="mm.test.classpath">
+		<fileset dir="${mm.ivy.lib.dir}/test" includes="*.jar"/>
+		<path refid="project.classpath"/>
+		<pathelement location="${jarfile}"/>
+		<pathelement location="${test.intdir}"/>
+	</path>
+
+	<!-- Classpath for unit tests -->
+	<path id="project.test.classpath">
+		<path refid="mm.test.classpath"/>
+	</path>
+
+	<!-- JARs whose change should trigger a rebuild of the current project
+		 (override after the 'import' element) -->
+	<path id="project.linked.jars"/>
+
+	<!-- Automatically determine whether the project has any tests -->
+	<condition property="has.tests">
+		<and>
+			<resourceexists>
+				<file file="${testdir}"/>
+			</resourceexists>
+			<resourcecount when="greater" count="0">
+				<fileset dir="${testdir}" includes="**/*.java"/>
+			</resourcecount>
+		</and>
+	</condition>
+
+	<!-- Targets -->
+
+	<target name="prerequisites" description="Build Jars for prerequisites"
+		unless="mm.java.disable.build"/>
+
+	<target name="check-deps" depends="prerequisites"
+		description="Clean if dependencies have changed"
+		unless="mm.java.disable.build">
+		<taskdef name="classesUpToDate" classname="org.micromanager.build.ClassesUpToDate"
+			classpath="${mm.java.lib.AntExtensions}"/>
+		<classesUpToDate dir="${intdir}" property="linked.jars.changed">
+			<path refid="project.linked.jars"/>
+		</classesUpToDate>
+		<antcall target="clean-if-jars-changed"/>
+	</target>
+
+	<target name="clean-if-jars-changed" if="linked.jars.changed">
+		<antcall target="clean"/>
+	</target>
+
+	<target name="prepare" depends="prerequisites,check-deps"
+		unless="mm.java.disable.build"/>
+
+	<!-- When overriding, the 'compile' target should always depend on 'prepare' -->
+	<target name="compile" depends="prepare" description="Compile Java sources"
+		unless="mm.java.disable.build">
+		<mkdir dir="${intdir}"/>
+		<mm-javac srcdir="${srcdir}" destdir="${intdir}">
+			<classpath refid="project.classpath"/>
+		</mm-javac>
+	</target>
+
+	<target name="copy-files" description="Copy resource files"
+		unless="mm.java.disable.build">
+		<copy todir="${intdir}">
+			<fileset dir="${srcdir}" includes="**/*.form"/>
+		</copy>
+	</target>
+
+	<target name="jar" depends="compile,copy-files" description="Build Jar file"
+		unless="mm.java.disable.build">
+		<mkdir dir="${outdir}"/>
+		<mm-jar basedir="${intdir}" destfile="${jarfile}"/>
+	</target>
+
+	<target name="test-only" if="has.tests" unless="mm.java.disable.build">
+		<mkdir dir="${test.intdir}"/>
+		<mm-javac srcdir="${testdir}" destdir="${test.intdir}">
+			<classpath refid="project.test.classpath"/>
+		</mm-javac>
+		<copy todir="${test.intdir}">
+			<fileset dir="${testrscdir}"/>
+		</copy>
+		<mkdir dir="${test.reportdir}"/>
+        <junit fork="true" haltonfailure="true" printsummary="true"
+            maxmemory="256m" failureproperty="mm.build.test.failed">
+			<sysproperty key="java.awt.headless" value="true"/>
+			<classpath refid="project.test.classpath"/>
+			<formatter type="plain"/>
+			<!-- If test.class is set, run one test. Otherwise, run all -->
+			<test if="test.class" name="${test.class}"
+				todir="${test.reportdir}"/>
+			<batchtest unless="test.class" todir="${test.reportdir}">
+				<fileset dir="${testdir}">
+					<include name="**/*.java"/>
+					<!-- Allow some helper classes that should not be tested themselves -->
+					<exclude name="**/Helper*.java"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- Wait until we have finished all tests before failing -->
+		<fail if="mm.build.test.failed"/>
+	</target>
+
+	<target name="test" depends="jar,test-only" description="Run unit tests"
+		unless="mm.java.disable.build"/>
+
+	<target name="install-only" description="Like 'install', but skip the build"
+		unless="mm.java.disable.build">
+		<fail unless="installdir"/>
+		<mkdir dir="${installdir}"/>
+		<copy todir="${installdir}" file="${jarfile}"/>
+	</target>
+
+	<target name="install" depends="jar,install-only" description="Install Jar file"
+		unless="mm.java.disable.build"/>
+
+	<target name="clean" description="Delete build product and intermediates"
+		unless="mm.java.disable.build">
+		<delete file="${jarfile}"/>
+		<delete dir="${intdir}"/>
+		<delete dir="${scratchdir}"/>
+		<delete dir="${test.intdir}"/>
+		<delete dir="${test.reportdir}"/>
+	</target>
+</project>

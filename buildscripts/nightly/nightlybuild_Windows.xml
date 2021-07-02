@@ -1,0 +1,34 @@
+<project name="mm.nightly.windows" basedir="../..">
+	<property name="mm.platform" value="Windows"/>
+	<property name="mm.configuration" value="Release"/>
+
+	<!-- Use the nightly-build-style version string -->
+	<property name="mm.build.mode" value="nightly"/>
+
+	<!-- Keep compiler command lines and other details -->
+	<property name="mm.build.msbuild.verbosity" value="normal"/>
+
+	<!-- Don't give up build if a device adapter or plugin is broken -->
+	<property name="mm.build.failonerror" value="false"/>
+
+	<!-- Default name for XML log file -->
+	<!-- Specify -listener org.apache.tools.ant.XmlLogger on the command
+	     line to enable. -->
+	<tstamp/>
+	<property name="XmlLogger.file" location="buildlog_${DSTAMP}T${TSTAMP}.xml"/>
+
+
+	<ant antfile="build.xml" useNativeBaseDir="true">
+		<property name="mm.architecture" value="x64"/>
+		<target name="stage"/>
+		<target name="package"/>
+		<target name="package-symbols"/>
+	</ant>
+
+	<ant antfile="build.xml" useNativeBaseDir="true">
+		<property name="mm.architecture" value="Win32"/>
+		<target name="stage"/>
+		<target name="package"/>
+		<target name="package-symbols"/>
+	</ant>
+</project>

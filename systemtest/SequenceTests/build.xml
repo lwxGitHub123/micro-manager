@@ -1,0 +1,10 @@
+<project name="SequenceTester" basedir="." default="jar">
+	<import file="../../buildscripts/javabuild.xml"/>
+
+	<path id="project.classpath">
+		<path refid="mm.compile.classpath"/>
+		<pathelement location="${mm.java.lib.acq-engine}"/>
+		<pathelement location="${mm.java.lib.mmcorej}"/>
+		<pathelement location="${mm.java.lib.mmstudio}"/>
+	</path>
+</project>

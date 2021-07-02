@@ -1,0 +1,38 @@
+<project name="mmstudio" basedir="." default="jar">
+	<!-- Not sure how it got the name "MMJ_", but we'd need significant
+		 planning to change it -->
+	<property name="product" value="MMJ_"/>
+
+	<import file="../buildscripts/javabuild.xml"/>
+
+	<path id="project.classpath">
+		<path refid="mm.compile.classpath"/>
+		<pathelement location="${mm.java.lib.mmcorej}"/>
+	</path>
+
+	<path id="project.linked.jars">
+		<pathelement location="${mm.java.lib.mmcorej}"/>
+	</path>
+
+	<!-- Override javabuild.xml's 'copy-files' target -->
+	<target name="copy-files" depends="mm.javabuild.copy-files">
+		<copy todir="${intdir}">
+			<fileset dir="${rscdir}">
+				<include name="**/*.png"/>
+				<include name="**/*.gif"/>
+			</fileset>
+        </copy>
+		<copy todir="${intdir}">
+			<fileset dir="${scriptdir}"/>
+		</copy>
+		<copy tofile="${intdir}/plugins.config" file="bin/plugins_mmstudio.config"/>
+	</target>
+
+	<!-- Override javabuild.xml's 'jar' target, to add manifest -->
+	<target name="jar" depends="compile,copy-files">
+		<mkdir dir="${outdir}"/>
+		<mm-jar basedir="${intdir}" destfile="${jarfile}">
+			<attribute name="Main-Class" value="org.micromanager.internal.MMStudio"/>
+		</mm-jar>
+	</target>
+</project>

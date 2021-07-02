@@ -1,0 +1,55 @@
+<project xmlns:ivy="antlib:org.apache.ivy.ant" name="mm.fetchdeps" default="resolve">
+	<dirname property="mm.basedir" file="${ant.file.mm.fetchdeps}/.."/>
+
+	<!-- Where to put retrieved dependency JARs -->
+	<property name="mm.ivy.lib.dir" location="${mm.basedir}/dependencies/artifacts"/>
+
+	<target name="download-ivy" unless="offline">
+		<property name="ivy.install.version" value="2.3.0"/>
+		<mkdir dir="${mm.basedir}/dependencies/ivy"/>
+		<get src="https://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+			dest="${mm.basedir}/dependencies/ivy"
+			usetimestamp="true"/>
+		<checksum file="${mm.basedir}/dependencies/ivy/ivy-${ivy.install.version}.jar"
+			algorithm="sha1" property="ivy.install.checksum"/>
+		<fail message="checksum verification failed for ivy-${ivy.install.version}.jar">
+			<condition>
+				<not>
+					<!-- SHA1 checksum for ivy-2.3.0.jar -->
+					<equals arg1="${ivy.install.checksum}"
+						arg2="c5ebf1c253ad4959a29f4acfe696ee48cdd9f473"
+						forcestring="yes" casesensitive="no"/>
+				</not>
+			</condition>
+		</fail>
+	</target>
+
+	<target name="init-ivy" depends="download-ivy">
+		<path id="ivy.lib.path">
+			<fileset dir="${mm.basedir}/dependencies/ivy" includes="*.jar"/>
+		</path>
+		<taskdef resource="org/apache/ivy/ant/antlib.xml"
+			uri="antlib:org.apache.ivy.ant"
+			classpathref="ivy.lib.path"/>
+	</target>
+
+	<target name="resolve" depends="init-ivy">
+		<property name="ivy.dep.file"
+			location="${mm.basedir}/buildscripts/ivy.xml"/>
+
+		<fail unless="mm.ivy.lib.dir"/>
+		<property name="ivy.lib.dir" location="${mm.ivy.lib.dir}"/>
+
+		<ivy:configure file="${mm.basedir}/buildscripts/ivysettings.xml"/>
+		<!-- Don't halt on failure, since we have a few optional dependencies. -->
+		<ivy:resolve haltonfailure="false"/>
+		<ivy:retrieve
+         symlink="${ivy.useSymlinks}"
+			pattern="${ivy.lib.dir}/[conf]/[artifact]-[revision](-[classifier]).[ext]"
+			sync="true"/>
+
+		<!-- Ensure directory exists even if no optional JARs are retrieved.
+			 Needed to prevent downstream errors. -->
+		<mkdir dir="${mm.ivy.lib.dir}/optional"/>
+	</target>
+</project>

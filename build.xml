@@ -1,0 +1,222 @@
+<!-- Build all components of Micro-Manager -->
+<!-- Run 'ant -p' for usage -->
+<project name="mm" basedir="." default="build">
+	<fail message="Micro-Manager Ant build files are currently designed for Windows only">
+		<condition><not><os family="winnt"/></not></condition>
+	</fail>
+
+	<include file="buildscripts/buildprops.xml"/>
+	<import file="buildscripts/version.xml"/>
+	
+	<macrodef name="run-all-java-projects">
+		<attribute name="target"/>
+		<sequential>
+			<subant target="@{target}" inheritall="true">
+				<property name="mm.java.installdir" value="${mm.java.installdir}"/>
+				<property name="mm.java.plugin.installdir" value="${mm.java.plugin.installdir}"/>
+				<property name="mm.java.library.installdir" value="${mm.java.library.installdir}"/>
+				<property name="mm.java.autofocus.installdir" value="${mm.java.autofocus.installdir}"/>
+				<filelist dir="${mm.basedir}">
+					<!-- Note: Order matters -->
+					<file name="${mm.cpp.srcdir}/MMCoreJ_wrap/build.xml"/>
+					<file name="mmstudio/build.xml"/>
+					<file name="acqEngine/build.xml"/>
+					<file name="libraries/build.xml"/>
+					<file name="plugins/build.xml"/>
+					<file name="autofocus/build.xml"/>
+					<file name="mmAsImageJMacros/build.xml"/>
+				</filelist>
+			</subant>
+		</sequential>
+	</macrodef>
+
+	<target name="build-buildtools">
+		<ant antfile="buildscripts/AntExtensions/build.xml" useNativeBasedir="true" target="jar"/>
+	</target>
+
+	<target name="build-cpp" description="Build all C++ components">
+		<mm-msbuild project="${mm.cpp.srcdir}/micromanager.sln" target="Build" failonerror="${mm.build.failonerror}"
+			logbasename="msbuild-micromanager${mm.build.logsuffix}"/>
+	</target>
+
+	<target name="build-java" depends="build-buildtools"
+		description="Build all Java components (will NOT trigger build-cpp; requires MMCoreJ_wrap DLL)">
+		<run-all-java-projects target="jar"/>
+	</target>
+
+	<target name="build" depends="set-version,build-cpp,build-java" description="Build all components"/>
+
+	<target name="stage-deviceadapters">
+		<if>
+			<istrue value="${mm.build.stage.demo.only}"/>
+			<then>
+				<copy todir="${mm.dll.installdir}">
+					<fileset file="${mm.cpp.outdir}/mmgr_dal_DemoCamera.dll"/>
+				</copy>
+			</then>
+			<else>
+				<copy todir="${mm.dll.installdir}">
+					<fileset dir="${mm.cpp.outdir}" includes="mmgr_dal_*.dll"/>
+				</copy>
+				<ant antfile="${mm.cpp.srcdir}/DeviceAdapters/build.xml" useNativeBasedir="true" target="install">
+					<property name="mm.dll.installdir" value="${mm.dll.installdir}"/>
+					<property name="mm.dll.helper.installdir" value="${mm.dll.helper.installdir}"/>
+				</ant>
+			</else>
+		</if>
+	</target>
+
+	<target name="stage-only" description="Gather files to be installed (will NOT trigger build)">
+		<antcall target="stage-deviceadapters"/>
+
+		<run-all-java-projects target="install-only"/>
+
+		<!-- MMCoreJ DLL -->
+		<!-- XXX Should be staged by MMCoreJ_wrap/build.xml -->
+		<copy todir="${mm.dll.installdir}">
+			<filelist dir="${mm.cpp.outdir}" files="MMCoreJ_wrap.dll"/>
+		</copy>
+
+		<!-- Files to distribute as is -->
+		<if>
+			<istrue value="${mm.build.for.imagej2updater}"/>
+			<then></then>
+			<else>
+				<copy todir="${mm.installdir}" failonerror="false">
+					<fileset dir="${mm.bindistdir}" includes="**"/>
+					<fileset dir="${mm.platform.bindistdir}" includes="**"/>
+					<fileset dir="${mm.common.bindistdir}" includes="**"/>
+				</copy>
+			</else>
+		</if>
+
+		<!-- XXX Remaining files to copy; should put elsewhere -->
+
+		<if>
+			<istrue value="${mm.build.for.imagej2updater}"/>
+			<then></then>
+			<else>
+				<copy todir="${mm.installdir}" file="${mm.thirdpartypublic}/JavaLauncher/ImageJ.exe"/>
+
+				<!-- Rename ij-*.jar to ij.jar and copy -->
+				<copy todir="${mm.installdir}" flatten="true">
+					<mapper type="regexp" from="ij-.*\.jar" to="ij.jar"/>
+					<fileset dir="${mm.ivy.lib.dir}/imagej" includes="ij-*.jar"/>
+				</copy>
+			</else>
+		</if>
+		<copy todir="${mm.java.installdir}">
+			<!-- Copy all JARs except for ij.jar -->
+			<fileset dir="${mm.ivy.lib.dir}/compile" includes="*.jar"/>
+			<fileset dir="${mm.ivy.lib.dir}/optional" includes="*.jar"/>
+			<fileset dir="${mm.ivy.lib.dir}/runtime" includes="*.jar"/>
+		</copy>
+
+		<if>
+			<istrue value="${mm.build.for.imagej2updater}"/>
+			<then></then>
+			<else>
+				<mkdir dir="${mm.scripts.installdir}"/>
+				<copy todir="${mm.scripts.installdir}">
+					<fileset dir="${mm.scripts.srcdir}" includes="*.bsh"/>
+				</copy>
+			</else>
+		</if>
+
+		<!-- Java runtime -->
+		<if>
+			<istrue value="${mm.build.for.imagej2updater}"/>
+			<then></then>
+			<else>
+				<copy todir="${mm.installdir}/jre" failonerror="false">
+					<fileset dir="${mm.java.runtime}"/>
+				</copy>
+			</else>
+		</if>
+	</target>
+
+	<target name="stage" depends="build-buildtools,set-version,build-cpp,build-java,stage-only"
+		description="Gather files to be installed (will trigger build)"/>
+
+	<target name="run" description="Run the staged application (will NOT trigger build or stage)">
+		<exec dir="${mm.installdir}" executable="${mm.installdir}/ImageJ.exe"/>
+	</target>
+
+	<target name="run-nolauncher" description="Run the staged application without using the ImageJ launcher">
+		<java classname="ij.ImageJ"
+			classpath="${mm.installdir}/ij.jar"
+			fork="yes" maxmemory="1000M"
+			dir="${mm.installdir}"/>
+	</target>
+
+	<target name="package" description="Create installer from staged files (will NOT trigger build or stage)">
+		<!-- Hack to allow the 'package' target to work in absence of
+		     closed-source device adapters -->
+		<if>
+			<resourceexists>
+				<file file="${mm.installdir}/OlympusIX3Control/OlympusIX3Control.exe"/>
+			</resourceexists>
+			<then></then>
+			<else>
+				<mkdir dir="${mm.installdir}/OlympusIX3Control"/>
+				<touch file="${mm.installdir}/OlympusIX3Control/placeholder.txt"/>
+			</else>
+		</if>
+
+		<!-- Default name, if not set -->
+		<property name="mm.installer.basename" value="MMSetup_${mm.architecture.bits}bit"/>
+		<property name="mm.installer" value="${mm.installer.basename}.exe"/>
+
+		<mkdir dir="${mm.distdir}"/>
+		<delete file="${mm.distdir}/${mm.installer}"/>
+		<exec dir="${mm.basedir}" executable="${mm.basedir}/../3rdparty/Inno_Setup_5/iscc.exe"
+			failonerror="true">
+			<arg value="/O${mm.distdir}"/>
+			<arg value="/F${mm.installer.basename}"/>
+			<arg file="${mm.basedir}/buildscripts/installer-${mm.architecture}.iss"/>
+		</exec>
+	</target>
+
+	<target name="package-symbols" description="Create a ZIP archive of the PDB files (will NOT trigger build)">
+		<!-- Default name, if not set -->
+		<property name="mm.symbols.basename"
+			value="MMDebugSymbols_${mm.architecture}"/>
+		<property name="mm.symbols" value="${mm.symbols.basename}.zip"/>
+
+		<mkdir dir="${mm.symbolsdir}"/>
+		<zip destfile="${mm.symbolsdir}/${mm.symbols}"
+			basedir="${mm.cpp.outdir}"
+			includes="*.pdb"/>
+	</target>
+
+	<target name="clean-swig">
+		<!-- Delete SWIG-generated source
+		     Sorry for the hard-coding, but even running the Clean
+		     target using MSBuild doesn't seem to delete these. -->
+		<delete file="${mm.cpp.srcdir}/MMCoreJ_wrap/MMCoreJ_wrap.cpp"/>
+		<delete file="${mm.cpp.srcdir}/MMCoreJ_wrap/MMCoreJ_wrap.h"/>
+		<delete dir="${mm.basedir}/build/intermediates/Swig"/>
+	</target>
+
+	<target name="clean-java" description="Clean only the Java components">
+		<run-all-java-projects target="clean"/>
+	</target>
+
+	<target name="clean" depends="clean-swig,clean-java" description="Delete build intermediate and output files">
+		<delete dir="${mm.cpp.outdir}"/>
+		<delete dir="${mm.cpp.intdir}"/>
+	</target>
+
+	<target name="clean-all" depends="clean-swig" description="Delete build files for all configurations and architectures">
+		<delete dir="${mm.outdir}"/>
+		<delete dir="${mm.intdir}"/>
+	</target>
+
+	<target name="unstage" description="Delete staged files">
+		<delete dir="${mm.installdir}"/>
+	</target>
+
+	<target name="unstage-all" description="Delete staged files for all configurations and architectures">
+		<delete dir="${mm.stagedir}"/>
+	</target>
+</project>
