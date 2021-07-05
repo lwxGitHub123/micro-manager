@@ -101,9 +101,6 @@ public:
 	int OnGetFromVariLC (MM::PropertyBase* pProp, MM::ActionType eAct);
 	int IsExposureSequenceable(bool& isSequenceable) const {isSequenceable = false; return DEVICE_OK;}
 	//int ClearPort(MM::Device& device, MM::Core& core, std::string port);
-	int OnEPIXUnit(MM::PropertyBase* pProp, MM::ActionType eAct);
-	int OnEPIXMultiUnitMask(MM::PropertyBase* pProp, MM::ActionType eAct);
-	int OnPixelType( MM::PropertyBase* pProp, MM::ActionType eAct );
 	int OnPort    (MM::PropertyBase* pProp, MM::ActionType eAct);
 
 	//int OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct);
@@ -166,7 +163,7 @@ private:
 	int m_iCameraNum;
 	std::string serialnum_;
 
-	std::vector<double> getNumbersFromMessage(std::string variLCmessage, bool prefixQ);
+	//std::vector<double> getNumbersFromMessage(std::string variLCmessage, bool prefixQ);
 
 	bool initialized_;
 
@@ -231,7 +228,6 @@ class MySequenceThread : public MMDeviceThreadBase
 }; 
 
 bool m_bDemoMode;
-//CCameraWrapper *m_pCamera;
 
 
 

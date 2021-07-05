@@ -403,121 +403,6 @@ int CNnCamera2::OnPort(MM::PropertyBase* pProp, MM::ActionType pAct)
 }
 
 
-
-//-----------------------------------------------------------------------------
-int CNnCamera2::OnPixelType( MM::PropertyBase* pProp, MM::ActionType eAct )
-//-----------------------------------------------------------------------------
-{
-   int result = DEVICE_ERR;
-   switch( eAct )
-   {
-   case MM::AfterSet:
-      {
-         if( IsCapturing() )
-         {
-            result = DEVICE_CAMERA_BUSY_ACQUIRING;
-         }
-         else
-         {
-            string pixelType;
-            pProp->Get( pixelType );
-            if( //( pixelType.compare( s_PixelType_64bitRGB ) == 0 ) ||
-               ( pixelType.compare( s_PixelType_32bitRGB ) == 0 ) ||
-               ( pixelType.compare( s_PixelType_16bit ) == 0 ) ||
-               ( pixelType.compare( s_PixelType_8bit ) == 0 ) )
-            {
-               result = DEVICE_OK;
-            }
-            else
-            {
-               // on error switch to default pixel type
-               pProp->Set( s_PixelType_8bit );
-               result = DEVICE_INVALID_PROPERTY_VALUE;
-            }
-            //RefreshCaptureBufferLayout();
-         }
-      }
-      break;
-   case MM::BeforeGet:
-      {
-         long bytesPerPixel = GetImageBytesPerPixel();
-         if( bytesPerPixel == 1 )
-         {
-            pProp->Set( s_PixelType_8bit );
-            result = DEVICE_OK;
-         }
-         else if( bytesPerPixel == 2 )
-         {
-            pProp->Set( s_PixelType_16bit );
-            result = DEVICE_OK;
-         }
-         else if( bytesPerPixel == 4 )
-         {
-            pProp->Set( s_PixelType_32bitRGB );
-            result = DEVICE_OK;
-         }
-         else if( bytesPerPixel == 8 )
-         {
-            //pProp->Set(s_PixelType_64bitRGB);
-            result = DEVICE_INVALID_PROPERTY_VALUE;
-         }
-         else
-         {
-            pProp->Set( s_PixelType_8bit );
-            result = DEVICE_INVALID_PROPERTY_VALUE;
-         }
-
-      }
-      break;
-   default:
-      break;
-   }
-   return result;
-}
-
-
-int CNnCamera2::OnEPIXMultiUnitMask(MM::PropertyBase* pProp, MM::ActionType eAct)
-{
-   if (eAct == MM::AfterSet)
-   {
-      long val = 0;
-      pProp->Get(val);
-
-	  if(val!=MULTIUNITMASK)
-	  {
-		MULTIUNITMASK = (int)val;
-	  }
-   }
-   else if (eAct == MM::BeforeGet)
-   {
-      pProp->Set((long)MULTIUNITMASK);
-   }
-
-   return DEVICE_OK;
-}
-
-int CNnCamera2::OnEPIXUnit(MM::PropertyBase* pProp, MM::ActionType eAct)
-{
-   if (eAct == MM::AfterSet)
-   {
-      long val = 0;
-      pProp->Get(val);
-
-	  if(val!=UNITSOPENMAP)
-	  {
-		UNITSOPENMAP = (int)val;
-	  }
-   }
-   else if (eAct == MM::BeforeGet)
-   {
-	   long val = UNITSOPENMAP; 
-       pProp->Set(val);
-   }
-
-   return DEVICE_OK;
-}
-
-
 /**
  * Required by the MM::Camera API
  * Please implement this yourself and do not rely on the base class implementation
@@ -659,12 +544,6 @@ int CNnCamera2::StopSequenceAcquisition()
 int CNnCamera2::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
 {
   
-	/*
-  IS_RECT rectAOI;
-  IS_RECT rectAOI2;
-  IS_SIZE_2D sizeMin;
-  IS_SIZE_2D sizeInc;
-  */
 
   if (xSize == 0 && ySize == 0){
 
@@ -675,85 +554,8 @@ int CNnCamera2::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
   }
   else{
 
-    /*
-    //stop acquisition
-    is_StopLiveVideo (hCam, IS_FORCE_VIDEO_STOP);
-    */  
-
-    printf("IDS_uEye: ROI of %d x %d pixel requested\n", xSize, ySize);
-/*
-    //read out the current ROI
-    is_AOI(hCam, IS_AOI_IMAGE_GET_AOI, (void*)&rectAOI2, sizeof(rectAOI2)); 
-
-    //check ROI parameters and define the ROI rectangle
-    is_AOI(hCam, IS_AOI_IMAGE_GET_SIZE_INC , (void*)&sizeInc, sizeof(sizeInc)); 
-    is_AOI(hCam, IS_AOI_IMAGE_GET_SIZE_MIN , (void*)&sizeMin, sizeof(sizeMin)); 
-
-    //printf("minimal ROI size: %d x %d pixels\n", sizeMin.s32Width, sizeMin.s32Height);
-    //printf("ROI increment: x:%d  y:%d pixels\n", sizeInc.s32Width, sizeInc.s32Height);
-
-    rectAOI.s32X = x;
-    rectAOI.s32Y = y;
-
-    if (((long)xSize > sizeMin.s32Width) && ((long)xSize <= cameraCCDXSize_)) {
-      rectAOI.s32Width= xSize / sizeInc.s32Width * sizeInc.s32Width;
-    }
-    if (((long)ySize > sizeMin.s32Height) && ((long)ySize <= cameraCCDYSize_)) {
-      rectAOI.s32Height= ySize / sizeInc.s32Height * sizeInc.s32Height;
-    }
-    
-
-    //apply ROI  
-    INT nRet = is_AOI(hCam, IS_AOI_IMAGE_SET_AOI, (void*)&rectAOI, sizeof(rectAOI)); 
-
-    if(nRet==IS_SUCCESS){
-
-
-      //update ROI parameters
-      roiX_=rectAOI.s32X;
-      roiY_=rectAOI.s32Y;      
-      roiXSize_=rectAOI.s32Width;
-      roiYSize_=rectAOI.s32Height;
-
-      //read out the ROI
-      is_AOI(hCam, IS_AOI_IMAGE_GET_AOI, (void*)&rectAOI2, sizeof(rectAOI2)); 
-      printf("IDS_uEye: ROI of %d x %d pixel obtained\n", rectAOI2.s32Width, rectAOI2.s32Height );
-
-      roiXSizeReal_=rectAOI2.s32Width*binX_;
-      roiYSizeReal_=rectAOI2.s32Height*binY_;
-
- 
-      //adjust image memory
-      is_FreeImageMem (hCam, pcImgMem,  memPid);
-      ResizeImageBuffer();
-      ClearImageBuffer(img_);
-      SetImageMemory();
-
-      
-      //update frame rate range
-      GetFramerateRange(hCam, &framerateMin_, &framerateMax_);
-      SetPropertyLimits("Frame Rate", framerateMin_, framerateMax_);
-      //printf("new frame rate range %f %f\n", framerateMin_, framerateMax_);
-
-      //update the exposure range
-      GetExposureRange(hCam, &exposureMin_, &exposureMax_, &exposureIncrement_);
-      if(exposureMax_>EXPOSURE_MAX) exposureMax_=EXPOSURE_MAX;                  //limit exposure time to keep the interface responsive
-      SetPropertyLimits(MM::g_Keyword_Exposure, exposureMin_, exposureMax_);
-
-	  */
-
-      //FIXME: device properties browser window needs to be refreshed here
-
       return DEVICE_OK;
     }
-    /*
-    else{
-      
-      printf("IDS_uEye: ROI of %d x %d pixel requested\n", xSize, ySize);
-      LogMessage("IDS_uEye: could not set ROI",true);
-      return ERR_ROI_INVALID;
-    }
-	*/
     
   }
 
@@ -784,58 +586,15 @@ int CNnCamera2::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& ySiz
 int CNnCamera2::ClearROI()
 {
 
-  /*
-  IS_RECT rectAOI;
-
-
-  rectAOI.s32X     = 0;
-  rectAOI.s32Y     = 0;
-  rectAOI.s32Width = cameraCCDXSize_/binX_;
-  rectAOI.s32Height =cameraCCDYSize_/binY_;
   
   
-  //apply ROI  
-  INT nRet = is_AOI(hCam, IS_AOI_IMAGE_SET_AOI, (void*)&rectAOI, sizeof(rectAOI)); 
-  */
-   
   INT nRet = 1;
   INT IS_SUCCESS = 1 ;
   if(nRet==IS_SUCCESS){
 
-    
-    //update stored ROI parameters
-   /*
-	roiX_=rectAOI.s32X;
-    roiY_=rectAOI.s32Y;      
-    roiXSize_=rectAOI.s32Width;
-    roiYSize_=rectAOI.s32Height;
-    roiXSizeReal_=rectAOI.s32Width*binX_;
-    roiYSizeReal_=rectAOI.s32Height*binY_;
-	*/
-
-
-    //adjust image memory
-    //is_FreeImageMem (hCam, pcImgMem,  memPid);
-    //ResizeImageBuffer();
     ClearImageBuffer(img_);
     SetImageMemory(); 
           
-
-    //update pixel clock range
-    //GetPixelClockRange(hCam, &pixelClkMin_, &pixelClkMax_);
-   // SetPropertyLimits("Pixel Clock",pixelClkMin_, pixelClkMax_); 
-    
-
-    //update frame rate range
-   // GetFramerateRange(hCam, &framerateMin_, &framerateMax_);
-   // SetPropertyLimits("Frame Rate", framerateMin_, framerateMax_);
-     
-    
-    //update the exposure range
-    //GetExposureRange(hCam, &exposureMin_, &exposureMax_, &exposureIncrement_);
-   // if(exposureMax_>EXPOSURE_MAX) exposureMax_=EXPOSURE_MAX;                       //limit exposure time to keep the interface responsive
-   // SetPropertyLimits(MM::g_Keyword_Exposure, exposureMin_, exposureMax_);  
-
 
     return DEVICE_OK;
   }
@@ -854,42 +613,7 @@ int CNnCamera2::SetImageMemory()
 
   int nRet;
 
-  //allocate image memory for the current size
-  //the size of the ROI already contains binning
-
-  /*
-  //  nRet = is_AllocImageMem (hCam, roiXSizeReal_/binX_, roiYSizeReal_/binY_, bitDepthReal_, &pcImgMem, &memPid);
-  */
-
-
-  /*
-  //method 1: assign extra memory area which is then copied into the buffer
-  nRet = is_AllocImageMem (hCam, roiXSizeReal_/binX_, roiYSizeReal_/binY_, bitDepthReal_, &pcImgMem, &memPid);
-  if (nRet != IS_SUCCESS){                          //could not allocate memory
-    LogMessage("could not allocate ROI image memory",true);
-    return ERR_MEM_ALLOC;
-  }
  
-  */
-
-  //method 2: directly assign the buffer to the camera
- /*
-  pcImgMem=(char*)img_.GetPixelsRW();
-  nRet = is_SetAllocatedImageMem (hCam, roiXSizeReal_/binX_, roiYSizeReal_/binY_, 8*img_.Depth(), pcImgMem, &memPid);
-  if (nRet != IS_SUCCESS){                          //could not assign image memory
-    printf("IDS_uEye: could not assign the image buffer as the image memory, error %d\n", nRet);
-  }
-  */
-
-  
-  //activate the new image memory
-  /*
-  nRet = is_SetImageMem (hCam, pcImgMem, memPid);
-  if (nRet != IS_SUCCESS){                          //could not activate image memory
-    printf("IDS_uEye: could not activate image memory, error %d\n", nRet);
-  }
-  */
-
   return DEVICE_OK;
 
 }
@@ -1097,7 +821,7 @@ int ClearPort(MM::Device& device, MM::Core& core, std::string port)
 }
 
 
-
+/*
 std::vector<double> CNnCamera2::getNumbersFromMessage(std::string variLCmessage, bool briefMode) {
    std::istringstream variStream(variLCmessage);
    std::string prefix;
@@ -1118,6 +842,7 @@ std::vector<double> CNnCamera2::getNumbersFromMessage(std::string variLCmessage,
 
 	return values;
 }
+*/
 
 int CNnCamera2::sendCmd(std::string cmd, std::string& out) {
 	sendCmd(cmd);
