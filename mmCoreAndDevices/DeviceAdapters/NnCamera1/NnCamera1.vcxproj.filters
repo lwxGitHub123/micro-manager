@@ -21,10 +21,18 @@
     <ClInclude Include="VersionNo.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="nncam.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="NnCamera1.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="nncam.dll">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -24,6 +24,7 @@
 //#define MMLINUX32
 
 #include "NnCamera1.h"
+#include "nncam.h"
 #include "VersionNo.h"
 #include <cstdio> 
 #include <string>
@@ -56,6 +57,20 @@ list<CNnCamera1*> CNN_CamList;
 const char* g_CameraDeviceName = "nn_camera";
 
 const char* g_ControllerName    = "nn_camera";
+
+const char* g_Keyword_EPIXUnit     = "EPIX_Unit";
+const char* g_Keyword_EPIXMultiUnitMask    = "EPIX Units to Open";
+const char* g_BaudRate_key        = "Baud Rate";
+const char* g_Baud9600            = "9600";
+const char* g_Baud115200          = "115200";
+
+
+static const char* s_PixelType_8bit = "8bit";
+static const char* s_PixelType_16bit = "16bit";
+static const char* s_PixelType_32bitRGB = "32bitRGB";
+
+
+
 
 int g_iCameraCount = 0;
 
@@ -117,6 +132,7 @@ CNnCamera1::CNnCamera1():
 	CCameraBase<CNnCamera1>(),
 	initializedDelay_(false),
 	initialized_(false),
+	baud_(g_Baud9600),
 	readoutUs_(0.0),
     bitDepth_(8),
 	sequenceStartTime_(0),
@@ -125,24 +141,468 @@ CNnCamera1::CNnCamera1():
 	wavelength_(546),
 	numTotalLCs_(2),
 	numActiveLCs_(2),
+	UNITSOPENMAP(1),
 	pictime_(0.0)
 {
 
 	readoutStartTime_ = GetCurrentMMTime();
 	m_iCameraNum = 0;
-	//thd_ = new MySequenceThread(this);
+	m_bDemoMode = FALSE;
+	//m_pCamera = NULL;
+	//m_pCamera = new CCameraWrapper();
 
-	printf(" ***  ");
+
+	/*
+	CPropertyAction* pAct = new CPropertyAction (this, &CNnCamera1::OnEPIXUnit);
+    CreateProperty(g_Keyword_EPIXUnit, "1", MM::Integer, false, pAct, true);
+  
+    vector<string> EPIXUnits;
+    EPIXUnits.push_back("1");
+    EPIXUnits.push_back("2");
+    EPIXUnits.push_back("3");
+    EPIXUnits.push_back("4");
+    int nRet = SetAllowedValues(g_Keyword_EPIXUnit, EPIXUnits);
+
+    pAct = new CPropertyAction (this, &CNnCamera1::OnEPIXMultiUnitMask);
+    CreateProperty(g_Keyword_EPIXMultiUnitMask, "1", MM::Integer, false, pAct, true);
+    nRet = SetAllowedValues(g_Keyword_EPIXMultiUnitMask, EPIXUnits);
+	*/
+
+	
+     // pixel type
+   /*
+	CPropertyAction* pAct = new CPropertyAction( this, &CNnCamera1::OnPixelType );
+     int result = CreateStringProperty( MM::g_Keyword_PixelType, s_PixelType_8bit, false, pAct );
+     assert( result == DEVICE_OK );
+     vector<string> pixelTypeValues;
+     pixelTypeValues.push_back( s_PixelType_8bit );
+     pixelTypeValues.push_back( s_PixelType_16bit );
+     pixelTypeValues.push_back( s_PixelType_32bitRGB );
+     //pixelTypeValues.push_back( s_PixelType_64bitRGB );
+     result = SetAllowedValues( MM::g_Keyword_PixelType, pixelTypeValues );
+    */
+
+		// Port:
+	/*
+	CPropertyAction* pAct = new CPropertyAction(this, &CNnCamera1::OnPort);
+	CreateProperty(MM::g_Keyword_Port, "Undefined", MM::String, false, pAct, true);
+
+	*/
+	//SetProperty(MM::g_Keyword_Port, port_.c_str());
+/*
+	pAct = new CPropertyAction(this, &CNnCamera1::OnNumActiveLCs);
+	CreateProperty("Number of Active LCs", "2", MM::Integer, false, pAct, true);
+
+	pAct = new CPropertyAction(this, &CNnCamera1::OnNumTotalLCs);
+	CreateProperty("Total Number of LCs", "2", MM::Integer, false, pAct, true);
+	*/
+
+	/*
+	pAct = new CPropertyAction(this, &CNnCamera1::OnNumPalEls);
+	CreateProperty("Total Number of Palette Elements", "5", MM::Integer, false, pAct, true);
+
+	pAct = new CPropertyAction(this, &CNnCamera1::OnBaud);
+	CreateProperty(g_BaudRate_key, "Undefined", MM::String, false, pAct, true);
+	*/
+
+	/*
+	AddAllowedValue(g_BaudRate_key, g_Baud115200, (long)115200);
+	AddAllowedValue(g_BaudRate_key, g_Baud9600, (long)9600);
+	*/
+
+	 WriteLog("pco_generic. Error %x in Init!", 0);
+	
+	 CPropertyAction* pAct = new CPropertyAction(this, &CNnCamera1::OnDemoMode);
+     CreateProperty("DemoMode", "Off", MM::String, false, pAct, true);
+     AddAllowedValue("DemoMode", "Off", 0);
+     AddAllowedValue("DemoMode", "On", 1);
+	 
+
+	 //thd_ = new MySequenceThread(this);
+
+	 printf(" ***  ");
 
 }
 
 
 CNnCamera1::~CNnCamera1()
 {
-
+	StopSequenceAcquisition();
 	g_iCameraCount = 0;
 }
 
+
+void CNnCamera1::WriteLog(char* message, int nErr)
+{
+  char szmes[300];
+
+  if(nErr != 0)
+    sprintf_s(szmes, sizeof(szmes), "Error %x! %s", nErr, message);
+  else
+    sprintf_s(szmes, sizeof(szmes), "%s", message);
+  LogMessage(szmes);
+}
+
+// Camera type
+/*
+int CNnCamera1::OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+  if(eAct == MM::BeforeGet)
+  {
+    char szinterfaces[20][40] = {
+        "Not specified",
+        "FireWire",          // 1            // Firewire interface
+        "CL Matrox",         // 2            // Cameralink Matrox Solios / Helios
+        "CL Silicon Soft ME3",// 3           // Cameralink Silicon Software Me3
+        "CL National Instr.",// 4            // Cameralink National Instruments
+        "GigE",              // 5            // Gigabit Ethernet
+        "USB",               // 6            // USB 2.0
+        "CL Silicon Soft.Me4", // 7          // Cameralink Silicon Software Me4
+        "USB3",              // 8            // USB 3.0
+        "WLAN",              // 9            // WLan
+        "CL Serial Int."    ,// 10           // Cameralink serial
+        "CLHS",             // 11           // Cameralink HS Silicon Software Me5
+        "Not specified 12",
+        "Not specified 13",
+        "Not specified 14",
+        "Not specified 15",
+        "Not specified 16",
+        "Not specified 17",
+        "Not specified 18",
+        "Not specified 19"
+    };
+    char sztype[500];
+    char szname[100];
+    int ilen = 100, icamtype = 0, iccdtype = 0, icamid = 0;
+    int iinterface = m_pCamera->m_strCamera.strAPIManager.wInterface;
+    if (iinterface > 20)
+      iinterface = 0;
+
+    m_pCamera->GetCameraNameNType(szname, ilen, &icamtype, &iccdtype, &icamid);
+    if(m_pCamera->m_iCamClass == 3)
+      sprintf_s(sztype, 500, "%s - SN:%0X / Interface: %s", szname, icamid, szinterfaces[iinterface]);
+    else
+      sprintf_s(sztype, 500, "%s", szname);
+    pProp->Set(sztype);
+  }
+  return DEVICE_OK;
+}
+*/
+
+
+int CNnCamera1::OnDemoMode(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+  if(eAct == MM::BeforeGet)
+  {
+    if(m_bDemoMode)
+      pProp->Set("On");
+    else
+      pProp->Set("Off");
+  }
+  else if(eAct == MM::AfterSet)
+  {
+    string tmp;
+    long demoModeTmp;
+    pProp->Get(tmp);
+    ((MM::Property *) pProp)->GetData(tmp.c_str(), demoModeTmp);
+    m_bDemoMode = (demoModeTmp == 1);
+  }
+  return DEVICE_OK;
+}
+
+
+bool CNnCamera1::SupportsDeviceDetection(void)
+{
+	return true;
+}
+
+
+
+MM::DeviceDetectionStatus CNnCamera1::DetectDevice(void)
+{
+	
+	// all conditions must be satisfied...
+	MM::DeviceDetectionStatus result = MM::Misconfigured;
+
+	try
+	{
+		long baud;
+		GetProperty(g_BaudRate_key, baud);
+
+		std::string transformed = port_;
+		for (std::string::iterator its = transformed.begin(); its != transformed.end(); ++its)
+		{
+			*its = (char)tolower(*its);
+		}
+
+		if (0 < transformed.length() && 0 != transformed.compare("undefined") && 0 != transformed.compare("unknown"))
+		{
+			int ret = 0;
+			MM::Device* pS;
+
+
+			// the port property seems correct, so give it a try
+			result = MM::CanNotCommunicate;
+			// device specific default communication parameters
+			GetCoreCallback()->SetDeviceProperty(port_.c_str(), MM::g_Keyword_AnswerTimeout, "2000.0");
+			GetCoreCallback()->SetDeviceProperty(port_.c_str(), MM::g_Keyword_BaudRate, baud_.c_str());
+			GetCoreCallback()->SetDeviceProperty(port_.c_str(), MM::g_Keyword_DelayBetweenCharsMs, "0.0");
+			GetCoreCallback()->SetDeviceProperty(port_.c_str(), MM::g_Keyword_Handshaking, "Off");
+			GetCoreCallback()->SetDeviceProperty(port_.c_str(), MM::g_Keyword_Parity, "None");
+			GetCoreCallback()->SetDeviceProperty(port_.c_str(), MM::g_Keyword_StopBits, "1");
+			GetCoreCallback()->SetDeviceProperty(port_.c_str(), "Verbose", "1");
+			pS = GetCoreCallback()->GetDevice(this, port_.c_str());
+			pS->Initialize();
+
+			ClearPort(*this, *GetCoreCallback(), port_);
+			ret = sendCmd("V?", serialnum_);
+			if (ret != DEVICE_OK || serialnum_.length() < 5)
+			{
+				LogMessageCode(ret, true);
+				LogMessage(std::string("NnCamera not found on ") + port_.c_str(), true);
+				LogMessage(std::string("NnCamera serial no:") + serialnum_, true);
+				ret = 1;
+				serialnum_ = "0";
+				pS->Shutdown();
+			}
+			else
+			{
+				// to succeed must reach here....
+				LogMessage(std::string("NnCamera found on ") + port_.c_str(), true);
+				LogMessage(std::string("NnCamera serial no:") + serialnum_, true);
+				result = MM::CanCommunicate;
+				GetCoreCallback()->SetSerialProperties(port_.c_str(),
+					"600.0",
+					baud_.c_str(),
+					"0.0",
+					"Off",
+					"None",
+					"1");
+				serialnum_ = "0";
+				pS->Initialize();
+				ret = sendCmd("R1");
+				pS->Shutdown();
+			}
+		}
+	}
+	catch (...)
+	{
+		LogMessage("Exception in DetectDevice!", false);
+	}
+
+	return result;
+
+	
+}
+
+
+//////////////// Action Handlers (VariLC) /////////////////
+
+int CNnCamera1::OnPort(MM::PropertyBase* pProp, MM::ActionType pAct)
+{
+	if (pAct == MM::BeforeGet)
+	{
+		pProp->Set(port_.c_str());
+	}
+	else if (pAct == MM::AfterSet)
+	{
+		if (initialized_)
+		{
+			pProp->Set(port_.c_str());
+			return DEVICE_INVALID_INPUT_PARAM;
+		}
+		pProp->Get(port_);
+	}
+
+	return DEVICE_OK;
+}
+
+
+//-----------------------------------------------------------------------------
+/*
+void CNnCamera1::RefreshCaptureBufferLayout( void )
+//-----------------------------------------------------------------------------
+{
+   pFI_->getCurrentCaptureBufferLayout( *pIRC_, &pCurrentRequestBufferLayout_ );
+   if( pCurrentRequest_ )
+   {
+      int result = DEVICE_OK;
+      LOGGED_MVIMPACT_ACQUIRE_CALL( pCurrentRequest_->unlock, () );
+      pCurrentRequest_ = 0;
+   }
+   const TImageDestinationPixelFormat previousDestinationPixelFormat = pID_->pixelFormat.read();
+   switch( pCurrentRequestBufferLayout_->imagePixelFormat.read() )
+   {
+   case ibpfMono8:
+      pID_->pixelFormat.write( idpfMono8 );
+      break;
+   case ibpfMono10:
+   case ibpfMono12:
+   case ibpfMono12Packed_V1:
+   case ibpfMono12Packed_V2:
+   case ibpfMono14:
+   case ibpfMono16:
+   case ibpfMono32:
+      pID_->pixelFormat.write( idpfMono16 );
+      break;
+   case ibpfBGR888Packed:
+   case ibpfRGB888Packed:
+      pID_->pixelFormat.write( idpfBGR888Packed );
+      break;
+   case ibpfRGBx888Packed:
+   case ibpfRGBx888Planar:
+   case ibpfRGB888Planar:
+   case ibpfYUV411_UYYVYY_Packed:
+   case ibpfYUV422Packed:
+   case ibpfYUV422_UYVYPacked:
+   case ibpfYUV422Planar:
+   case ibpfYUV444Packed:
+   case ibpfYUV444_UYVPacked:
+   case ibpfYUV444Planar:
+      pID_->pixelFormat.write( idpfRGBx888Packed );
+      break;
+   // All these could be handled using RGB64 of micro-manager. Unfortunately we deliver RGB48...
+   case ibpfBGR101010Packed_V2:
+   case ibpfYUV422_10Packed:
+   case ibpfYUV422_UYVY_10Packed:
+   case ibpfRGB101010Packed:
+   case ibpfRGB121212Packed:
+   case ibpfRGB141414Packed:
+   case ibpfRGB161616Packed:
+   case ibpfYUV444_10Packed:
+   case ibpfYUV444_UYV_10Packed:
+      pID_->pixelFormat.write( idpfRGBx888Packed );
+      break;
+   case ibpfAuto:
+   case ibpfRaw:
+      pID_->pixelFormat.write( idpfMono8 );
+      break;
+      // do NOT add a default here! Whenever the compiler complains it is
+      // missing not every format is handled here, which means that at least
+      // one has been forgotten and that should be fixed!
+   }
+   if( previousDestinationPixelFormat != pID_->pixelFormat.read() )
+   {
+      // in case we did just change the destination pixel format we need to query the
+      // current output format once again as the buffer layout might be different now!
+      pFI_->getCurrentCaptureBufferLayout( *pIRC_, &pCurrentRequestBufferLayout_ );
+   }
+}
+*/
+
+
+//-----------------------------------------------------------------------------
+int CNnCamera1::OnPixelType( MM::PropertyBase* pProp, MM::ActionType eAct )
+//-----------------------------------------------------------------------------
+{
+   int result = DEVICE_ERR;
+   switch( eAct )
+   {
+   case MM::AfterSet:
+      {
+         if( IsCapturing() )
+         {
+            result = DEVICE_CAMERA_BUSY_ACQUIRING;
+         }
+         else
+         {
+            string pixelType;
+            pProp->Get( pixelType );
+            if( //( pixelType.compare( s_PixelType_64bitRGB ) == 0 ) ||
+               ( pixelType.compare( s_PixelType_32bitRGB ) == 0 ) ||
+               ( pixelType.compare( s_PixelType_16bit ) == 0 ) ||
+               ( pixelType.compare( s_PixelType_8bit ) == 0 ) )
+            {
+               result = DEVICE_OK;
+            }
+            else
+            {
+               // on error switch to default pixel type
+               pProp->Set( s_PixelType_8bit );
+               result = DEVICE_INVALID_PROPERTY_VALUE;
+            }
+            //RefreshCaptureBufferLayout();
+         }
+      }
+      break;
+   case MM::BeforeGet:
+      {
+         long bytesPerPixel = GetImageBytesPerPixel();
+         if( bytesPerPixel == 1 )
+         {
+            pProp->Set( s_PixelType_8bit );
+            result = DEVICE_OK;
+         }
+         else if( bytesPerPixel == 2 )
+         {
+            pProp->Set( s_PixelType_16bit );
+            result = DEVICE_OK;
+         }
+         else if( bytesPerPixel == 4 )
+         {
+            pProp->Set( s_PixelType_32bitRGB );
+            result = DEVICE_OK;
+         }
+         else if( bytesPerPixel == 8 )
+         {
+            //pProp->Set(s_PixelType_64bitRGB);
+            result = DEVICE_INVALID_PROPERTY_VALUE;
+         }
+         else
+         {
+            pProp->Set( s_PixelType_8bit );
+            result = DEVICE_INVALID_PROPERTY_VALUE;
+         }
+
+      }
+      break;
+   default:
+      break;
+   }
+   return result;
+}
+
+
+int CNnCamera1::OnEPIXMultiUnitMask(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::AfterSet)
+   {
+      long val = 0;
+      pProp->Get(val);
+
+	  if(val!=MULTIUNITMASK)
+	  {
+		MULTIUNITMASK = (int)val;
+	  }
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+      pProp->Set((long)MULTIUNITMASK);
+   }
+
+   return DEVICE_OK;
+}
+
+int CNnCamera1::OnEPIXUnit(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::AfterSet)
+   {
+      long val = 0;
+      pProp->Get(val);
+
+	  if(val!=UNITSOPENMAP)
+	  {
+		UNITSOPENMAP = (int)val;
+	  }
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+	   long val = UNITSOPENMAP; 
+       pProp->Set(val);
+   }
+
+   return DEVICE_OK;
+}
 
 
 /**
@@ -171,10 +631,106 @@ int CNnCamera1::StartSequenceAcquisition(long numImages, double interval_ms, boo
       return ret;
    sequenceStartTime_ = GetCurrentMMTime();
    imageCounter_ = 0;
-   //thd_->Start(numImages,interval_ms);
+   thd_->Start(numImages,interval_ms);
    stopOnOverflow_ = stopOnOverflow;
    return DEVICE_OK;
 }
+
+
+MySequenceThread::MySequenceThread(CNnCamera1* pCam)
+   :intervalMs_(default_intervalMS)
+   ,numImages_(default_numImages)
+   ,imageCounter_(0)
+   ,stop_(true)
+   ,suspend_(false)
+   ,camera_(pCam)
+   ,startTime_(0)
+   ,actualDuration_(0)
+   ,lastFrameTime_(0)
+{};
+
+MySequenceThread::~MySequenceThread() {};
+
+
+void MySequenceThread::Stop() {
+   MMThreadGuard(this->stopLock_);
+   stop_=true;
+}
+
+void MySequenceThread::Start(long numImages, double intervalMs)
+{
+   MMThreadGuard(this->stopLock_);
+   MMThreadGuard(this->suspendLock_);
+   numImages_=numImages;
+   intervalMs_=intervalMs;
+   imageCounter_=0;
+   stop_ = false;
+   suspend_=false;
+   activate();
+   actualDuration_ = 0;
+   startTime_= camera_->GetCurrentMMTime();
+   lastFrameTime_ = 0;
+}
+
+bool MySequenceThread::IsStopped(){
+   MMThreadGuard(this->stopLock_);
+   return stop_;
+}
+
+void MySequenceThread::Suspend() {
+   MMThreadGuard(this->suspendLock_);
+   suspend_ = true;
+}
+
+bool MySequenceThread::IsSuspended() {
+   MMThreadGuard(this->suspendLock_);
+   return suspend_;
+}
+
+void MySequenceThread::Resume() {
+   MMThreadGuard(this->suspendLock_);
+   suspend_ = false;
+}
+
+int MySequenceThread::svc(void) throw()
+{
+   int ret=DEVICE_ERR;
+   try 
+   {
+      do
+      {  
+         ret=camera_->ThreadRun();
+      } while (DEVICE_OK == ret && !IsStopped() && imageCounter_++ < numImages_-1);
+      if (IsStopped())
+         camera_->LogMessage("SeqAcquisition interrupted by the user\n");
+   }catch(...){
+      camera_->LogMessage(g_Msg_EXCEPTION_IN_THREAD, false);
+   }
+   stop_=true;
+   actualDuration_ = camera_->GetCurrentMMTime() - startTime_;
+   camera_->OnThreadExiting();
+   return ret;
+}
+
+
+/**                                                                       
+* Stop and wait for the Sequence thread finished                                   
+*/                                                                        
+int CNnCamera1::StopSequenceAcquisition()                                     
+{
+   if (IsCallbackRegistered())
+   {
+      
+   }
+
+   if (!thd_->IsStopped()) {
+      thd_->Stop();                                                       
+      thd_->wait();                                                       
+   }                                                                      
+                                                                          
+   return DEVICE_OK;                                                      
+} 
+
 
 /**
 * Sets the camera Region Of Interest.
@@ -597,6 +1153,7 @@ int CNnCamera1::Initialize()
   // setup NN camera
   // ----------------
 
+
   	for (long i = 0; i < numTotalNNc_; ++i) {
 		retardance_[i] = 0.5;
 	}
@@ -605,7 +1162,18 @@ int CNnCamera1::Initialize()
 		palEl_[i] = "";
 	}
 
+	/*
+	HNncam g_hcam = NULL;
+	g_hcam = Nncam_Open(NULL);
+    if (NULL == g_hcam)
+    {
+        printf("no camera found or open failed\n");
+        return -1;
+    }
+	*/
+
 	// empty the Rx serial buffer before sending command
+/*
 	int ret = ClearPort(*this, *GetCoreCallback(), port_);
 	if (ret != DEVICE_OK)
 		return ret;
@@ -706,6 +1274,10 @@ int CNnCamera1::Initialize()
 		return ret;
 	}
 	SetErrorText(99, "Device set busy for ");
+
+	*/
+
+
 	return DEVICE_OK;
 }
 

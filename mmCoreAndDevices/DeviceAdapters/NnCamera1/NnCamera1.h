@@ -53,6 +53,9 @@ std::string port_;
 //int ClearPort(MM::Device& device, MM::Core& core, const char* port);
 int ClearPort(MM::Device& device, MM::Core& core, std::string port);
 
+
+class MySequenceThread;
+
 class CNnCamera1: public CCameraBase<CNnCamera1>
 {
 public:
@@ -81,6 +84,7 @@ public:
 	int ClearROI();
 	int StartSequenceAcquisition(double interval);
     int StartSequenceAcquisition(long numImages, double interval_ms, bool stopOnOverflow);
+	int StopSequenceAcquisition();
 
 
 	int GetBinning() const;
@@ -108,11 +112,29 @@ public:
 	int OnGetFromVariLC (MM::PropertyBase* pProp, MM::ActionType eAct);
 	int IsExposureSequenceable(bool& isSequenceable) const {isSequenceable = false; return DEVICE_OK;}
 	//int ClearPort(MM::Device& device, MM::Core& core, std::string port);
+	int OnEPIXUnit(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnEPIXMultiUnitMask(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnPixelType( MM::PropertyBase* pProp, MM::ActionType eAct );
+	void RefreshCaptureBufferLayout( void );
+	int OnPort    (MM::PropertyBase* pProp, MM::ActionType eAct);
+
+	//int OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct);
+
+
+	// device discovery
+	bool SupportsDeviceDetection(void);
+	MM::DeviceDetectionStatus DetectDevice(void);
+
+	int OnDemoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+
+	void WriteLog(char *message, int err);
 
 
 private:
 
 	ImgBuffer img_;
+
+	std::string baud_;
 
 	long numTotalNNc_;  // total number of nnCamera
 	double retardance_[25]; // retardance values of total number of LCs; I made the index 8, a high number unlikely to be exceeded by the variLC hardware
@@ -171,21 +193,25 @@ private:
     void ClearImageBuffer(ImgBuffer& img);
     int SetImageMemory();
 
-    //MySequenceThread * thd_;
+	friend class MySequenceThread;
+    MySequenceThread * thd_;
+
+	int UNITSOPENMAP;
+	int MULTIUNITMASK;
 
 
 };
 
 
-/*
+
 class MySequenceThread : public MMDeviceThreadBase
 {
 
-	  friend class CIDS_uEye;
+	  friend class CNnCamera1;
 	  enum { default_numImages=1, default_intervalMS = 100 };
 
 	 public:
-	  MySequenceThread(CIDS_uEye* pCam);
+	  MySequenceThread(CNnCamera1* pCam);
 	  ~MySequenceThread();
 
 	  void Stop();
@@ -203,7 +229,7 @@ class MySequenceThread : public MMDeviceThreadBase
 
 	 private:                                                                     
 	  int svc(void) throw();
-	  CIDS_uEye* camera_;                                                     
+	  CNnCamera1* camera_;                                                     
 	  bool stop_;                                                               
 	  bool suspend_;                                                            
 	  long numImages_;                                                          
@@ -215,7 +241,10 @@ class MySequenceThread : public MMDeviceThreadBase
 	  MMThreadLock stopLock_;                                                   
 	  MMThreadLock suspendLock_;
 }; 
-*/
+
+bool m_bDemoMode;
+//CCameraWrapper *m_pCamera;
+
 
 
 
