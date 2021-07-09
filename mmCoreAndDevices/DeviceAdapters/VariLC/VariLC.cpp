@@ -725,3 +725,4 @@ int VariLC::sendCmd(std::string cmd) {
 	}
 	return DEVICE_OK;
 }
+

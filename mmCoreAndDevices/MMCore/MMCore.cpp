@@ -896,7 +896,7 @@ void CMMCore::initializeAllDevices() throw (CMMError)
       mm::DeviceModuleLockGuard guard(pDevice);
       LOG_INFO(coreLogger_) << "Will initialize device " << devices[i];
       pDevice->Initialize();
-      LOG_INFO(coreLogger_) << "Did initialize device " << devices[i];
+      LOG_INFO(coreLogger_) << "Did initialize device1 " << devices[i];
 
       assignDefaultRole(pDevice);
    }
@@ -952,7 +952,7 @@ void CMMCore::initializeDevice(const char* label ///< the device to initialize
 
    LOG_INFO(coreLogger_) << "Will initialize device " << label;
    pDevice->Initialize();
-   LOG_INFO(coreLogger_) << "Did initialize device " << label;
+   LOG_INFO(coreLogger_) << "Did initialize device2 " << label;
 
    updateCoreProperties();
 }

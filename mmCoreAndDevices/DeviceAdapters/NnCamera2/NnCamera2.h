@@ -33,6 +33,7 @@
 #include "DeviceUtils.h"
 #include <string>
 #include <map>
+#include<nncam.h>
 
 
 
@@ -103,7 +104,7 @@ public:
 	//int ClearPort(MM::Device& device, MM::Core& core, std::string port);
 	int OnPort    (MM::PropertyBase* pProp, MM::ActionType eAct);
 
-	//int OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 
 	// device discovery
@@ -163,8 +164,6 @@ private:
 	int m_iCameraNum;
 	std::string serialnum_;
 
-	//std::vector<double> getNumbersFromMessage(std::string variLCmessage, bool prefixQ);
-
 	bool initialized_;
 
 
@@ -184,6 +183,7 @@ private:
 	int UNITSOPENMAP;
 	int MULTIUNITMASK;
 
+	HNncam g_hcam ;
 
 };
 

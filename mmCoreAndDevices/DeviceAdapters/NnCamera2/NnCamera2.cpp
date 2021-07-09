@@ -34,6 +34,14 @@
 #include <algorithm>
 #include <list>
 
+#include <stdio.h>
+#include <direct.h>
+#include <io.h>
+#include <time.h>
+#include <fstream>
+#include <iostream>
+
+
 #include <iostream>
 #include <sys/stat.h>
 #if defined (MMLINUX32) || defined(MMLINUX64)
@@ -50,13 +58,22 @@
 	const char* g_strVersion = "v1.14.6, 1/28/2020";
 #endif
 
+#ifdef WIN32
+#define ACCESS(fileName,accessMode) _access(fileName,accessMode)
+#define MKDIR(path) _mkdir(path)
+#else
+#define ACCESS(fileName,accessMode) access(fileName,accessMode)
+#define MKDIR(path) mkdir(path,S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+#endif
+
+
 using namespace std;
 
 
 list<CNnCamera2*> CNN_CamList;
 const char* g_CameraDeviceName = "nn_camera2";
 
-const char* g_ControllerName    = "nn_camera";
+const char* g_ControllerName    = "nn_camera2";
 
 const char* g_Keyword_EPIXUnit     = "EPIX_Unit";
 const char* g_Keyword_EPIXMultiUnitMask    = "EPIX Units to Open";
@@ -69,10 +86,64 @@ static const char* s_PixelType_8bit = "8bit";
 static const char* s_PixelType_16bit = "16bit";
 static const char* s_PixelType_32bitRGB = "32bitRGB";
 
-
+MMThreadLock g_serialLock_[64];
 
 
 int g_iCameraCount = 0;
+
+
+
+string getCwd(){  
+    //获取当前工作目录  
+    string path;  
+    path = getcwd(NULL,0);  
+    return path;  
+}  
+
+//在文件夹下创建cameraLog文件夹
+string createDirectory(string directoryPath)
+{
+	cout << " directoryPath = "  << directoryPath << endl;
+	directoryPath = directoryPath + "\\" + "cameraLog" + "\\";
+	char * p=(char*)directoryPath.c_str();
+    if (ACCESS(p, 0) != 0)
+    {
+        int ret = MKDIR(p);
+        if (ret != 0)
+        {
+            return directoryPath;
+        }
+    }
+    return directoryPath;
+}
+
+void cameraLog(string log)
+{
+	string path = getCwd();  
+    cout << path << endl;  
+	string logFile = createDirectory(path);
+	ofstream File;
+	SYSTEMTIME st = { 0 };  
+	GetLocalTime(&st);  //获取当前时间 可精确到ms
+	string nowStr = to_string(static_cast<long long>(st.wYear)) +"-"+ to_string(static_cast<long long>(st.wMonth)) +"-"+ to_string(static_cast<long long>(st.wDay)) +"  "+ to_string(static_cast<long long>(st.wHour)) + ":"+ to_string(static_cast<long long>(st.wMinute))
+		+ ":" +to_string(static_cast<long long>(st.wSecond)) + "." +to_string(static_cast<long long>(st.wMilliseconds));
+	File.open(logFile + "\\log"+".txt",ios::out | ios::app);
+	File<<nowStr + "     " + log<<endl;
+	File.close();
+
+
+	/*
+	HNncam g_hcam1 = Nncam_Open(NULL);
+    if (NULL == g_hcam1)
+    {
+        printf("no camera found or open failed\n");
+        //return -1;
+    }
+	*/
+	
+
+	//return logFile ;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -81,12 +152,14 @@ int g_iCameraCount = 0;
 MODULE_API void InitializeModuleData()
 {
   //AddAvailableDeviceName(g_CameraDeviceName, "PCO generic camera adapter");
-  RegisterDevice(g_CameraDeviceName, MM::CameraDevice, "Nncamera2 adapter0705");
+  RegisterDevice(g_CameraDeviceName, MM::CameraDevice, "Nncamera2 adapter0706");
+  cameraLog(" Nncamera2  InitializeModuleData  ");
 }
 
 MODULE_API void DeleteDevice(MM::Device* pDevice)
 {
   //PCO_CamList.remove((CPCOCam*) pDevice);
+  cameraLog("  DeleteDevice  ");
   delete pDevice;
 }
 
@@ -96,12 +169,16 @@ MODULE_API MM::Device* CreateDevice(const char* pszDeviceName)
     return 0;
 
   string strName(pszDeviceName);
+  
+  cameraLog("strName = " + strName  + " g_CameraDeviceName = "  + g_CameraDeviceName );
 
   if(strName == g_CameraDeviceName)
   {
     CNnCamera2 *cnncam = new CNnCamera2();
 
     CNN_CamList.push_front(cnncam);
+
+	
     return cnncam;
   }
   return 0;
@@ -124,6 +201,8 @@ int CNnCamera2::Shutdown()
    //is_ExitCamera (hCam);
 
    initialized_ = false;
+   cameraLog(" Shutdown ");
+
    return DEVICE_OK;
 }
 
@@ -142,6 +221,7 @@ CNnCamera2::CNnCamera2():
 	numTotalLCs_(2),
 	numActiveLCs_(2),
 	UNITSOPENMAP(1),
+	g_hcam(NULL),
 	pictime_(0.0)
 {
 
@@ -182,7 +262,7 @@ CNnCamera2::CNnCamera2():
      result = SetAllowedValues( MM::g_Keyword_PixelType, pixelTypeValues );
     */
 
-		// Port:
+    // Port:
 	/*
 	CPropertyAction* pAct = new CPropertyAction(this, &CNnCamera2::OnPort);
 	CreateProperty(MM::g_Keyword_Port, "Undefined", MM::String, false, pAct, true);
@@ -195,19 +275,30 @@ CNnCamera2::CNnCamera2():
 	AddAllowedValue(g_BaudRate_key, g_Baud9600, (long)9600);
 	*/
 
-	 WriteLog("pco_generic. Error %x in Init!", 0);
+	 WriteLog("nn_generic. Error %x in Init!", 0);
 	
 	 CPropertyAction* pAct = new CPropertyAction(this, &CNnCamera2::OnDemoMode);
-     CreateProperty("DemoMode", "Off", MM::String, false, pAct, true);
-     AddAllowedValue("DemoMode", "Off", 0);
+     //CreateProperty("DemoMode", "Off", MM::String, false, pAct, true);
+    
+	 CreateProperty(MM::g_Keyword_Port, "Undefined", MM::String, false, pAct, true);
+	 SetProperty(MM::g_Keyword_Port, port_.c_str());
+
+	 /*
+	 AddAllowedValue("DemoMode", "Off", 0);
      AddAllowedValue("DemoMode", "On", 1);
-	 
+	 */
+
+	 AddAllowedValue(g_BaudRate_key, g_Baud115200, (long)115200);
+	 AddAllowedValue(g_BaudRate_key, g_Baud9600, (long)9600);
 
 	 //thd_ = new MySequenceThread(this);
+
+	 cameraLog("  CNnCamera2 ");
 
 	 printf(" ***  ");
 
 }
+
 
 
 CNnCamera2::~CNnCamera2()
@@ -215,6 +306,7 @@ CNnCamera2::~CNnCamera2()
 	StopSequenceAcquisition();
 	g_iCameraCount = 0;
 }
+
 
 
 void CNnCamera2::WriteLog(char* message, int nErr)
@@ -229,7 +321,6 @@ void CNnCamera2::WriteLog(char* message, int nErr)
 }
 
 // Camera type
-/*
 int CNnCamera2::OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
   if(eAct == MM::BeforeGet)
@@ -259,20 +350,25 @@ int CNnCamera2::OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct)
     char sztype[500];
     char szname[100];
     int ilen = 100, icamtype = 0, iccdtype = 0, icamid = 0;
-    int iinterface = m_pCamera->m_strCamera.strAPIManager.wInterface;
+    /*
+	int iinterface = m_pCamera->m_strCamera.strAPIManager.wInterface;
     if (iinterface > 20)
       iinterface = 0;
+	
 
     m_pCamera->GetCameraNameNType(szname, ilen, &icamtype, &iccdtype, &icamid);
+	
     if(m_pCamera->m_iCamClass == 3)
       sprintf_s(sztype, 500, "%s - SN:%0X / Interface: %s", szname, icamid, szinterfaces[iinterface]);
     else
       sprintf_s(sztype, 500, "%s", szname);
+	  */
+	sprintf_s(sztype, 500, "%s", "USB3");
     pProp->Set(sztype);
   }
   return DEVICE_OK;
 }
-*/
+
 
 
 int CNnCamera2::OnDemoMode(MM::PropertyBase* pProp, MM::ActionType eAct)
@@ -338,6 +434,8 @@ MM::DeviceDetectionStatus CNnCamera2::DetectDevice(void)
 			GetCoreCallback()->SetDeviceProperty(port_.c_str(), "Verbose", "1");
 			pS = GetCoreCallback()->GetDevice(this, port_.c_str());
 			pS->Initialize();
+
+			cameraLog( " port_ = " + port_  + " serialnum_ " + serialnum_);
 
 			ClearPort(*this, *GetCoreCallback(), port_);
 			ret = sendCmd("V?", serialnum_);
@@ -514,6 +612,7 @@ int MySequenceThread::svc(void) throw()
 /**                                                                       
 * Stop and wait for the Sequence thread finished                                   
 */                                                                        
+
 int CNnCamera2::StopSequenceAcquisition()                                     
 {
    if (IsCallbackRegistered())
@@ -530,6 +629,17 @@ int CNnCamera2::StopSequenceAcquisition()
 } 
 
 
+string Int_to_String(int n)
+
+{
+ostringstream stream;
+
+stream<<n;  //n为int类型
+
+return stream.str();
+
+}
+
 /**
 * Sets the camera Region Of Interest.
 * Required by the MM::Camera API.
@@ -545,7 +655,7 @@ int CNnCamera2::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
 {
   
 
-  if (xSize == 0 && ySize == 0){
+  if (xSize % 2 == 0 || ySize %2 == 0 || x%2 == 0 || y%2 == 0){
 
     //clear ROI
     ClearROI();
@@ -554,6 +664,9 @@ int CNnCamera2::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
   }
   else{
 
+	  string ss =  "  SetROI :  x == " + Int_to_String(x) + " y =="  + Int_to_String(y) + "  xSize ==  " + Int_to_String(xSize) + " ySize= " + Int_to_String(ySize) ;
+	  cameraLog(ss);
+	  //Nncam_put_Roi(g_hcam, x, y, xSize, ySize);
       return DEVICE_OK;
     }
     
@@ -569,13 +682,23 @@ int CNnCamera2::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
 int CNnCamera2::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& ySize)
 {
   
-   x = roiX_;
-   y = roiY_;
+ 
+ if (xSize % 2 == 0 || ySize %2 == 0 || x%2 == 0 || y%2 == 0){
 
-   xSize = roiXSize_;
-   ySize = roiYSize_;
+    //clear ROI
+    ClearROI();
+    
+    return DEVICE_OK;
+  }
+  else{
 
-   return DEVICE_OK;
+	  string ss =  "  GetROI :  x == " + Int_to_String(x) + " y =="  + Int_to_String(y) + "  xSize ==  " + Int_to_String(xSize) + " ySize= " + Int_to_String(ySize) ;
+	  cameraLog(ss);
+	  //Nncam_get_Roi(g_hcam, &x, &y, &xSize, &ySize);
+      return DEVICE_OK;
+    }
+
+
 }
 
 
@@ -585,8 +708,6 @@ int CNnCamera2::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& ySiz
 */
 int CNnCamera2::ClearROI()
 {
-
-  
   
   INT nRet = 1;
   INT IS_SUCCESS = 1 ;
@@ -787,9 +908,34 @@ void CNnCamera2::GetName(char* name) const
 
 int CNnCamera2::Initialize()
 {
+
+   MMThreadGuard g(g_serialLock_[UNITSOPENMAP]);
   // setup NN camera
   // ----------------
+	if (initialized_)
+      return DEVICE_OK;
+	
+	// Name
+	int nRet = CreateProperty("Name", "nn2 camera", MM::String, true);
+	if(nRet != DEVICE_OK)
+	return nRet;
+   
+	// Description
+	nRet = CreateProperty("Description", "nn2 generic driver module", MM::String, true);
+	if(nRet != DEVICE_OK)
+	   return nRet;
 
+	CPropertyAction* pAct;
+
+	// camera type (read-only)
+	pAct = new CPropertyAction(this, &CNnCamera2::OnCameraType);
+	nRet = CreateProperty("CameraType", "", MM::String, true, pAct);
+	if(nRet != DEVICE_OK)
+	   return nRet;
+
+	initialized_ = true;
+
+	cameraLog("Initialize");
 
 	return DEVICE_OK;
 }
@@ -820,29 +966,6 @@ int ClearPort(MM::Device& device, MM::Core& core, std::string port)
 	return DEVICE_OK;
 }
 
-
-/*
-std::vector<double> CNnCamera2::getNumbersFromMessage(std::string variLCmessage, bool briefMode) {
-   std::istringstream variStream(variLCmessage);
-   std::string prefix;
-   double val;
-   std::vector<double> values;
-
-   if (!briefMode){
-      variStream >> prefix;
-	}
-    for (;;) {
-       variStream >> val;
-       if (! variStream.fail()) {
-          values.push_back(val);
-       } else {
-           break;
-       }
-	 }
-
-	return values;
-}
-*/
 
 int CNnCamera2::sendCmd(std::string cmd, std::string& out) {
 	sendCmd(cmd);
