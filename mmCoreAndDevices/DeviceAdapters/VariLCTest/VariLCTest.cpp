@@ -328,11 +328,13 @@ int VariLCTest::Initialize()
 	if (DEVICE_OK != ret)
 		return ret;
 
-	string log = "VariLCTest  Initialize  ret =  " + to_string(static_cast<long long>(ret)) + "   g_ControllerName  =   " + g_ControllerName;
-	CUtils::cameraLog(log);
+
 	// empty the Rx serial buffer before sending command
 	
 	ret = ClearPort(*this, *GetCoreCallback(), port_);
+	string log = "VariLCTest  Initialize  ret =  " + to_string(static_cast<long long>(ret)) + "   g_ControllerName  =   " + g_ControllerName;
+	CUtils::cameraLog(log);
+
 	if (ret != DEVICE_OK)
 		return ret;
 	

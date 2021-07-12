@@ -31,16 +31,6 @@
 #include <sstream>
 #include <algorithm>
 
-#include <stdio.h>
-#include <direct.h>
-#include <io.h>
-#include <time.h>
-#include <fstream>
-#include <iostream>
-#include "nncam.h"
-#include "Utils.h"
-
-
 #include <iostream>
 #include <sys/stat.h>
 #if defined (MMLINUX32) || defined(MMLINUX64)
@@ -57,14 +47,6 @@
 	const char* g_strVersion = "v1.14.6, 1/28/2020";
 #endif
 
-
-#ifdef WIN32
-#define ACCESS(fileName,accessMode) _access(fileName,accessMode)
-#define MKDIR(path) _mkdir(path)
-#else
-#define ACCESS(fileName,accessMode) access(fileName,accessMode)
-#define MKDIR(path) mkdir(path,S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
-#endif
 
 	
 #define _RAPTOR_CAMERA_KITE 1
@@ -757,8 +739,6 @@ int serialWriteReadCmd(int unitopenmap, int unit, unsigned char* bufin, int insi
 	//*********** End EPIX Setup *****************
 #endif
 
-
-
 ///////////////////////////////////////////////////////////////////////////////
 // Exported MMDevice API
 ///////////////////////////////////////////////////////////////////////////////
@@ -771,9 +751,6 @@ int serialWriteReadCmd(int unitopenmap, int unit, unsigned char* bufin, int insi
  */
 MODULE_API void InitializeModuleData()
 {
-
-
-
 #ifdef PLEORA
    RegisterDevice(g_RaptorCameraOwl640DeviceName,       MM::CameraDevice, g_RaptorCameraOwl640DeviceName);
 #else
@@ -782,7 +759,6 @@ MODULE_API void InitializeModuleData()
    RegisterDevice(g_RaptorCameraKITEDeviceName,      MM::CameraDevice, g_RaptorCameraKITEDeviceName);
    RegisterDevice(g_RaptorCameraOspreyDeviceName,    MM::CameraDevice, g_RaptorCameraOspreyDeviceName);
    RegisterDevice(g_RaptorCameraOspreyRGBDeviceName, MM::CameraDevice, g_RaptorCameraOspreyRGBDeviceName);
-   CUtils::cameraLog("RaptorEPIX InitializeModuleData");
 
 	#ifndef HORIBA_COMPILE
 	   RegisterDevice(g_RaptorCameraOwl320DeviceName,       MM::CameraDevice, g_RaptorCameraOwl320DeviceName);
@@ -808,13 +784,9 @@ MODULE_API void InitializeModuleData()
 
 MODULE_API MM::Device* CreateDevice(const char* deviceName)
 {
-
    if (deviceName == 0)
       return 0;
 
-    string strName(deviceName);
-
-   CUtils::cameraLog( " CRaptorEPIX   deviceName =   " + strName + "   g_RaptorCameraKITEDeviceName = " + g_RaptorCameraKITEDeviceName);
    // decide which device class to create based on the deviceName parameter
    if (strcmp(deviceName, g_RaptorCameraKITEDeviceName) == 0)
    {
@@ -919,12 +891,8 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
 
 MODULE_API void DeleteDevice(MM::Device* pDevice)
 {
-  
-   CUtils::cameraLog("  CRaptorEPIX  DeleteDevice ");
    delete pDevice;
 }
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // CRaptorEPIX implementation
@@ -1044,10 +1012,7 @@ CRaptorEPIX::CRaptorEPIX(int nCameraType) :
 
 {
 
-
 	cameraType_ = nCameraType;
-
-	CUtils::cameraLog( "  CRaptorEPIX  cameraType_ =  " + cameraType_);
 	switch(nCameraType)
 	{
 		case _RAPTOR_CAMERA_KITE:   
@@ -3231,9 +3196,6 @@ int CRaptorEPIX::Initialize()
    osCCDY << cameraCCDYSize_ ;
    CreateProperty("CCD X Pixels", osCCDX.str().c_str(), MM::Integer, true);
    CreateProperty("CCD Y Pixels", osCCDY.str().c_str(), MM::Integer, true);
-
-   CUtils::cameraLog( "  CRaptorEPIX   CCD X Pixels =  " +  osCCDX.str()  + "   CCD Y Pixels =  " + osCCDY.str());
-
 
    // Trigger device
 //   pAct = new CPropertyAction (this, &CRaptorEPIX::OnTriggerDevice); 

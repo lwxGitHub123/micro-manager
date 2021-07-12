@@ -192,7 +192,7 @@ int CPCO_Camera2::OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct)
     else
       sprintf_s(sztype, 500, "%s", szname);
 	  */
-	sprintf_s(sztype, 500, "%s", "USB3");
+	sprintf_s(sztype, 500, "%s", "USB3.0");
     pProp->Set(sztype);
   }
   return DEVICE_OK;

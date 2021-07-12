@@ -31,7 +31,7 @@
 #include <algorithm>
 #include "WriteCompactTiffRGB.h"
 #include <iostream>
-
+#include "Utils.h"
 
 
 using namespace std;
@@ -93,6 +93,8 @@ MODULE_API void InitializeModuleData()
    RegisterDevice("ImageFlipY", MM::ImageProcessorDevice, "ImageFlipY");
    RegisterDevice("MedianFilter", MM::ImageProcessorDevice, "MedianFilter");
    RegisterDevice(g_HubDeviceName, MM::HubDevice, "DHub");
+   string log = " CDemoCamera3  InitializeModuleData";
+   CUtils::cameraLog(log);
 }
 
 MODULE_API MM::Device* CreateDevice(const char* deviceName)
@@ -188,12 +190,17 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
 	  return new DemoHub();
    }
 
+   string log = " CDemoCamera3  CreateDevice";
+   CUtils::cameraLog(log);
    // ...supplied name not recognized
    return 0;
 }
 
 MODULE_API void DeleteDevice(MM::Device* pDevice)
 {
+
+   string log = " CDemoCamera3  DeleteDevice";
+   CUtils::cameraLog(log);
    delete pDevice;
 }
 
@@ -261,6 +268,9 @@ CDemoCamera3::CDemoCamera3() :
    CreateFloatProperty("MaximumExposureMs", exposureMaximum_, false,
          new CPropertyAction(this, &CDemoCamera3::OnMaxExposure),
          true);
+
+   string log = " CDemoCamera3  CDemoCamera3";
+   CUtils::cameraLog(log);
 }
 
 /**
@@ -272,6 +282,9 @@ CDemoCamera3::CDemoCamera3() :
 */
 CDemoCamera3::~CDemoCamera3()
 {
+   
+   string log = " CDemoCamera3  ~CDemoCamera3";
+   CUtils::cameraLog(log);
    StopSequenceAcquisition();
    delete thd_;
 }
@@ -282,6 +295,8 @@ CDemoCamera3::~CDemoCamera3()
 */
 void CDemoCamera3::GetName(char* name) const
 {
+   string log = " CDemoCamera3  GetName";
+   CUtils::cameraLog(log);
    // Return the name used to referr to this device adapte
    CDeviceUtils::CopyLimitedString(name, g_CameraDeviceName);
 }
@@ -297,6 +312,8 @@ void CDemoCamera3::GetName(char* name) const
 */
 int CDemoCamera3::Initialize()
 {
+   string log = " CDemoCamera3  Initialize";
+   CUtils::cameraLog(log);
    if (initialized_)
       return DEVICE_OK;
 
@@ -355,7 +372,7 @@ int CDemoCamera3::Initialize()
    nRet = SetAllowedValues(MM::g_Keyword_PixelType, pixelTypeValues);
    if (nRet != DEVICE_OK)
       return nRet;
-
+   
    // Bit depth
    pAct = new CPropertyAction (this, &CDemoCamera3::OnBitDepth);
    nRet = CreateIntegerProperty("BitDepth", 8, false, pAct);
@@ -548,12 +565,13 @@ int CDemoCamera3::Initialize()
    initialized_ = true;
 
 
-
+   	log = "CDemoCamera3  Initialize  nRet =  " + to_string(static_cast<long long>(nRet)) ;
+	CUtils::cameraLog(log);
 
    // initialize image buffer
    GenerateEmptyImage(img_);
+   //return DEVICE_OK;
    return DEVICE_OK;
-
 
 }
 
@@ -567,6 +585,8 @@ int CDemoCamera3::Initialize()
 */
 int CDemoCamera3::Shutdown()
 {
+   string log = " CDemoCamera3  Shutdown";
+   CUtils::cameraLog(log);
    initialized_ = false;
    return DEVICE_OK;
 }
@@ -579,6 +599,9 @@ int CDemoCamera3::Shutdown()
 */
 int CDemoCamera3::SnapImage()
 {
+   string log = " CDemoCamera3  SnapImage";
+   CUtils::cameraLog(log);
+
 	static int callCounter = 0;
 	++callCounter;
 
@@ -591,6 +614,8 @@ int CDemoCamera3::SnapImage()
 
    if (!fastImage_)
    {
+	  log = " CDemoCamera3  GenerateSyntheticImage";
+	  CUtils::cameraLog(log);
       GenerateSyntheticImage(img_, exp);
    }
 
@@ -627,6 +652,9 @@ int CDemoCamera3::SnapImage()
 */
 const unsigned char* CDemoCamera3::GetImageBuffer()
 {
+
+   string log = " CDemoCamera3  GetImageBuffer";
+   CUtils::cameraLog(log);
    MMThreadGuard g(imgPixelsLock_);
    MM::MMTime readoutTime(readoutUs_);
    while (readoutTime > (GetCurrentMMTime() - readoutStartTime_)) {}		
@@ -640,6 +668,8 @@ const unsigned char* CDemoCamera3::GetImageBuffer()
 */
 unsigned CDemoCamera3::GetImageWidth() const
 {
+   string log = " CDemoCamera3  GetImageWidth";
+   CUtils::cameraLog(log);
    return img_.Width();
 }
 
@@ -699,6 +729,9 @@ long CDemoCamera3::GetImageBufferSize() const
 */
 int CDemoCamera3::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
 {
+   string log = " CDemoCamera3  SetROI";
+   CUtils::cameraLog(log);
+
    multiROIXs_.clear();
    multiROIYs_.clear();
    multiROIWidths_.clear();
@@ -742,6 +775,9 @@ int CDemoCamera3::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& yS
 */
 int CDemoCamera3::ClearROI()
 {
+
+   string log = " CDemoCamera3  ClearROI";
+   CUtils::cameraLog(log);
    ResizeImageBuffer();
    roiX_ = 0;
    roiY_ = 0;
@@ -759,6 +795,8 @@ int CDemoCamera3::ClearROI()
  */
 bool CDemoCamera3::SupportsMultiROI()
 {
+   string log = " CDemoCamera3  SupportsMultiROI";
+   CUtils::cameraLog(log);
    return supportsMultiROI_;
 }
 
@@ -876,6 +914,8 @@ int CDemoCamera3::GetMultiROI(unsigned* xs, unsigned* ys, unsigned* widths,
 */
 double CDemoCamera3::GetExposure() const
 {
+   string log = " CDemoCamera3  GetExposure";
+   CUtils::cameraLog(log);
    char buf[MM::MaxStrLength];
    int ret = GetProperty(MM::g_Keyword_Exposure, buf);
    if (ret != DEVICE_OK)
@@ -1951,6 +1991,9 @@ int CDemoCamera3::OnCrash(MM::PropertyBase* pProp, MM::ActionType eAct)
 */
 int CDemoCamera3::ResizeImageBuffer()
 {
+   
+   string log = " CDemoCamera3  ResizeImageBuffer";
+   CUtils::cameraLog(log);
    char buf[MM::MaxStrLength];
    //int ret = GetProperty(MM::g_Keyword_Binning, buf);
    //if (ret != DEVICE_OK)

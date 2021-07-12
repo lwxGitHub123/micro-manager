@@ -132,14 +132,7 @@ void cameraLog(string log)
 	File.close();
 
 
-	/*
-	HNncam g_hcam1 = Nncam_Open(NULL);
-    if (NULL == g_hcam1)
-    {
-        printf("no camera found or open failed\n");
-        //return -1;
-    }
-	*/
+
 	
 
 	//return logFile ;
@@ -159,7 +152,7 @@ MODULE_API void InitializeModuleData()
 MODULE_API void DeleteDevice(MM::Device* pDevice)
 {
   //PCO_CamList.remove((CPCOCam*) pDevice);
-  cameraLog("  DeleteDevice  ");
+  cameraLog(" CNnCamera2  DeleteDevice  ");
   delete pDevice;
 }
 
@@ -170,7 +163,7 @@ MODULE_API MM::Device* CreateDevice(const char* pszDeviceName)
 
   string strName(pszDeviceName);
   
-  cameraLog("strName = " + strName  + " g_CameraDeviceName = "  + g_CameraDeviceName );
+  cameraLog("CNnCamera2  CreateDevice strName = " + strName  + " g_CameraDeviceName = "  + g_CameraDeviceName );
 
   if(strName == g_CameraDeviceName)
   {
@@ -201,7 +194,7 @@ int CNnCamera2::Shutdown()
    //is_ExitCamera (hCam);
 
    initialized_ = false;
-   cameraLog(" Shutdown ");
+   cameraLog(" CNnCamera2  Shutdown ");
 
    return DEVICE_OK;
 }
@@ -363,9 +356,21 @@ int CNnCamera2::OnCameraType(MM::PropertyBase* pProp, MM::ActionType eAct)
     else
       sprintf_s(sztype, 500, "%s", szname);
 	  */
-	sprintf_s(sztype, 500, "%s", "USB3");
+	sprintf_s(sztype, 500, "%s", "USB3.0");
     pProp->Set(sztype);
   }
+
+  
+  g_hcam = Nncam_Open(NULL);
+  if (NULL == g_hcam)
+   {
+       printf("no camera found or open failed\n");
+	   cameraLog( "CNnCamera2  no camera found or open failed  ");
+       return 1;
+   }
+  
+
+  cameraLog( "CNnCamera2  OnCameraType  ");
   return DEVICE_OK;
 }
 
@@ -435,7 +440,7 @@ MM::DeviceDetectionStatus CNnCamera2::DetectDevice(void)
 			pS = GetCoreCallback()->GetDevice(this, port_.c_str());
 			pS->Initialize();
 
-			cameraLog( " port_ = " + port_  + " serialnum_ " + serialnum_);
+			cameraLog( "CNnCamera2  port_ = " + port_  + " serialnum_ " + serialnum_);
 
 			ClearPort(*this, *GetCoreCallback(), port_);
 			ret = sendCmd("V?", serialnum_);
@@ -664,7 +669,7 @@ int CNnCamera2::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
   }
   else{
 
-	  string ss =  "  SetROI :  x == " + Int_to_String(x) + " y =="  + Int_to_String(y) + "  xSize ==  " + Int_to_String(xSize) + " ySize= " + Int_to_String(ySize) ;
+	  string ss =  "CNnCamera2  SetROI :  x == " + Int_to_String(x) + " y =="  + Int_to_String(y) + "  xSize ==  " + Int_to_String(xSize) + " ySize= " + Int_to_String(ySize) ;
 	  cameraLog(ss);
 	  //Nncam_put_Roi(g_hcam, x, y, xSize, ySize);
       return DEVICE_OK;
@@ -692,7 +697,7 @@ int CNnCamera2::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& ySiz
   }
   else{
 
-	  string ss =  "  GetROI :  x == " + Int_to_String(x) + " y =="  + Int_to_String(y) + "  xSize ==  " + Int_to_String(xSize) + " ySize= " + Int_to_String(ySize) ;
+	  string ss =  "CNnCamera2  GetROI :  x == " + Int_to_String(x) + " y =="  + Int_to_String(y) + "  xSize ==  " + Int_to_String(xSize) + " ySize= " + Int_to_String(ySize) ;
 	  cameraLog(ss);
 	  //Nncam_get_Roi(g_hcam, &x, &y, &xSize, &ySize);
       return DEVICE_OK;
@@ -935,7 +940,7 @@ int CNnCamera2::Initialize()
 
 	initialized_ = true;
 
-	cameraLog("Initialize");
+	cameraLog(" CNnCamera2   Initialize");
 
 	return DEVICE_OK;
 }
