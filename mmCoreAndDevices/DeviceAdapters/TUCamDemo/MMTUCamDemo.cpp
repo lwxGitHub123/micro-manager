@@ -163,13 +163,18 @@ const char* g_PixelType_32bit    = "32bit";  // floating point greyscale
 
 MODULE_API void InitializeModuleData()
 {
-   RegisterDevice(g_TUDemoDeviceName, MM::CameraDevice, "TUCSEN Camera");
+   string log = " CMMTUCamDemo  TUCSENDemo Camera";
+   CUtils::cameraLog(log);
+   RegisterDevice(g_TUDemoDeviceName, MM::CameraDevice, "TUCSENDemo Camera");
 }
 
 MODULE_API MM::Device* CreateDevice(const char* deviceName)
 {
    if (deviceName == 0)
       return 0;
+
+   string log = " CMMTUCamDemo  CreateDevice";
+   CUtils::cameraLog(log);
 
    // decide which device class to create based on the deviceName parameter
    if (strcmp(deviceName, g_TUDemoDeviceName) == 0)
@@ -184,6 +189,8 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
 
 MODULE_API void DeleteDevice(MM::Device* pDevice)
 {
+   string log = " CMMTUCamDemo  DeleteDevice";
+   CUtils::cameraLog(log);
    delete pDevice;
 }
 
@@ -251,6 +258,8 @@ CMMTUCamDemo::CMMTUCamDemo():
     readoutStartTime_ = GetCurrentMMTime();
     thd_ = new CTUCamDemoThread(this);
 
+	string log = " CMMTUCamDemo  CMMTUCamDemo";
+    CUtils::cameraLog(log);
 
 
 }
@@ -259,7 +268,25 @@ CMMTUCamDemo::CMMTUCamDemo():
 CMMTUCamDemo::~CMMTUCamDemo()
 {
 
+    if (m_hThdTempEvt != NULL)
+	{
+        m_bTemping = false;
+		WaitForSingleObject(m_hThdTempEvt, INFINITE);	
+		CloseHandle(m_hThdTempEvt);
+		m_hThdTempEvt = NULL;
+	}
 
+    StopSequenceAcquisition();
+	StopCapture();
+	s_nCntCam--;
+
+	if (s_nCntCam <= 0)
+	{
+		s_nCntCam = 0;
+		UninitTUCamDemoApi();
+	}
+
+    delete thd_;  
 
 }
 
@@ -353,18 +380,51 @@ int CMMTUCamDemo::Initialize()
    assert(nRet == DEVICE_OK);
 
 
+      // initialize image buffer
+    nRet = StartCapture();
+    if (nRet != DEVICE_OK)
+        return nRet;
 
 
+#ifdef TESTRESOURCELOCKING
+    TestResourceLocking(true);
+    LogMessage("TestResourceLocking OK",true);
+#endif
+
+    initialized_ = true;
+
+    // initialize image buffer
+    GenerateEmptyImage(img_);
 
 
+	// initialize image buffer
+	nRet = StopCapture();
+	if (nRet != DEVICE_OK)
+		return nRet;
 
+	log = " CMMTUCamDemo  [Initialize]:Success!";
+    CUtils::cameraLog(log);
 
+	return DEVICE_OK;
 }
 
 
+void CMMTUCamDemo::TestResourceLocking(const bool recurse)
+{
+    if(recurse)
+        TestResourceLocking(false);
+}
 
 
+void CMMTUCamDemo::GenerateEmptyImage(ImgBuffer& img)
+{
+   MMThreadGuard g(imgPixelsLock_);
+   if (img.Height() == 0 || img.Width() == 0 || img.Depth() == 0)
+      return;
 
+   unsigned char* pBuf = const_cast<unsigned char*>(img.GetPixels());
+   memset(pBuf, 0, img.Height()*img.Width()*img.Depth());
+}
 
 
 /*
@@ -1708,18 +1768,21 @@ int CMMTUCamDemo::UninitTUCamDemoApi()
 int CMMTUCamDemo::ReleaseBuffer()
 {
     if (g_pImageData)
-        free(g_pImageData);
-	if(g_pImageData)
 	{
-	    string log = " CMMTUCamDemo  ReleaseBuffer failed";
+		free(g_pImageData);
+	    g_pImageData = NULL ;
+	}
+	if(g_pImageData == NULL)
+	{
+	    string log = " CMMTUCamDemo  ReleaseBuffer success";
         CUtils::cameraLog(log);
-		return -1;
+		return DEVICE_OK;
 	}
 	else
 	{
-	   string log = " CMMTUCamDemo  ReleaseBuffer success";
+	   string log = " CMMTUCamDemo  ReleaseBuffer failed";
        CUtils::cameraLog(log);
-	   return DEVICE_OK;
+	   return -1;
 	}
     
 }
