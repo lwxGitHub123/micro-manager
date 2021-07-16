@@ -141,6 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ImgProc.h" />
     <ClInclude Include="MMTUCamDemo.h" />
     <ClInclude Include="nncam.h" />
     <ClInclude Include="Utils.h" />
@@ -148,6 +149,7 @@
     <ClInclude Include="WriteCompactTiffRGB.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ImgProc.cpp" />
     <ClCompile Include="MMTUCamDemo.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>

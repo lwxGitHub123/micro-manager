@@ -30,12 +30,18 @@
     <ClInclude Include="WriteCompactTiffRGB.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ImgProc.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MMTUCamDemo.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Utils.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ImgProc.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

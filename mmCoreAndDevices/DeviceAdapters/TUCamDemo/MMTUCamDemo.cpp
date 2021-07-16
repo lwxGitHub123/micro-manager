@@ -30,7 +30,11 @@
 #include "Utils.h"
 //#include "nncam.h"
 
+#include <opencv2\opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp> 
 #include <Windows.h>
+
+#include "ImgProc.h"
 
 /*
 #include <shlwapi.h>
@@ -1020,6 +1024,20 @@ static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 			printf("  g_pImageData  ==  ");
 			log = " CMMTUCamDemo  EventCallback  pull image ok";
             CUtils::cameraLog(log);
+			
+			
+			wchar_t strPath[MAX_PATH];
+			string imgName = "";
+			swprintf(strPath, L"%04u.jpg", g_totalT);
+            CImgProc::Wchar_tToString(imgName,strPath);
+				
+			string imgPath = "H:/projects1/testImg/" + imgName;
+			CUtils::cameraLog("imgPath =  "+ imgPath);
+			
+			Mat img = CImgProc::Rgb24ToMat(g_pImageDataT,info.height,info.width);
+			imwrite(imgPath,img);
+			
+
 			/*
 			wchar_t strPath[MAX_PATH];
 		    swprintf(strPath, L"%04u.jpg", m_nSnapFile++);
@@ -1913,8 +1931,14 @@ int CMMTUCamDemo::ReleaseBuffer()
 {
     string log = " CMMTUCamDemo  ReleaseBuffer !";
     CUtils::cameraLog(log);
-    if (NULL == g_hcam)
-        return DEVICE_NOT_CONNECTED;
+    /*
+	if (NULL == g_hcam)
+	{
+		log = " CMMTUCamDemo  ReleaseBuffer DEVICE_NOT_CONNECTED !";
+        CUtils::cameraLog(log);
+		return DEVICE_NOT_CONNECTED;
+	}
+	*/
 
 	log = " CMMTUCamDemo  DEVICE_CONNECTED !";
     CUtils::cameraLog(log);
