@@ -268,6 +268,8 @@ CMMTUCamDemo::CMMTUCamDemo():
 CMMTUCamDemo::~CMMTUCamDemo()
 {
 
+    string log = " CMMTUCamDemo  ~CMMTUCamDemo";
+    CUtils::cameraLog(log);
     if (m_hThdTempEvt != NULL)
 	{
         m_bTemping = false;
@@ -384,7 +386,7 @@ int CMMTUCamDemo::Initialize()
     nRet = StartCapture();
     if (nRet != DEVICE_OK)
         return nRet;
-
+	
 
 #ifdef TESTRESOURCELOCKING
     TestResourceLocking(true);
@@ -395,7 +397,8 @@ int CMMTUCamDemo::Initialize()
 
     // initialize image buffer
     GenerateEmptyImage(img_);
-
+	log = " CMMTUCamDemo  [GenerateEmptyImage]:Success!";
+    CUtils::cameraLog(log);
 
 	// initialize image buffer
 	nRet = StopCapture();
@@ -411,6 +414,8 @@ int CMMTUCamDemo::Initialize()
 
 void CMMTUCamDemo::TestResourceLocking(const bool recurse)
 {
+	string log = " CMMTUCamDemo  TestResourceLocking";
+    CUtils::cameraLog(log);
     if(recurse)
         TestResourceLocking(false);
 }
@@ -418,6 +423,8 @@ void CMMTUCamDemo::TestResourceLocking(const bool recurse)
 
 void CMMTUCamDemo::GenerateEmptyImage(ImgBuffer& img)
 {
+   string log = " CMMTUCamDemo  GenerateEmptyImage";
+   CUtils::cameraLog(log);
    MMThreadGuard g(imgPixelsLock_);
    if (img.Height() == 0 || img.Width() == 0 || img.Depth() == 0)
       return;
@@ -456,7 +463,7 @@ int CMMTUCamDemo::SnapImage()
 	if (!m_bLiving)  // should never happen, but just in case...
 	{
 		StartCapture();
-		log = " CMMTUCamDemo  SanpImage Start Capture ";
+		log = " CMMTUCamDemo  SnapImage Start Capture ";
         CUtils::cameraLog(log);
 	}
 
@@ -467,7 +474,7 @@ int CMMTUCamDemo::SnapImage()
 	{
 		int nCnt = 0;
 		int nRet = DEVICE_ERR;
-		log = " CMMTUCamDemo  SanpImage SOFTWARE ";
+		log = " CMMTUCamDemo  SnapImage SOFTWARE ";
         CUtils::cameraLog(log);
 		do 
 		{
@@ -485,8 +492,8 @@ int CMMTUCamDemo::SnapImage()
 			{
 				CDeviceUtils::SleepMs((long) exp);
 			}
-			//TUDBG_PRINTF("SanpImage fastImage_ = %d",fastImage_);
-			log = " CMMTUCamDemo  SanpImage fastImage_ =  " + to_string(static_cast<long long>(fastImage_));
+			//TUDBG_PRINTF("SnapImage fastImage_ = %d",fastImage_);
+			log = " CMMTUCamDemo  SnapImage fastImage_ =  " + to_string(static_cast<long long>(fastImage_));
             CUtils::cameraLog(log);
 			WaitForFrame(img_);
 		}
@@ -500,6 +507,8 @@ int CMMTUCamDemo::SnapImage()
 int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight)
 {
 
+		string log = " CMMTUCamDemo  CopyToFrame";
+        CUtils::cameraLog(log);
 //         char sz[256] = {0};
 //         sprintf(sz, "[TUCAM_Buf_WaitForFrame]:%d, %d, %d, %d\n", m_frame.usWidth, m_frame.usHeight, m_frame.ucElemBytes, m_frame.ucChannels);
 //         OutputDebugString(sz);
@@ -587,12 +596,14 @@ int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight)
 
 int CMMTUCamDemo::WaitForFrame(ImgBuffer& img)
 {
+	string log = " CMMTUCamDemo  WaitForFrame";
+    CUtils::cameraLog(log);
     MMThreadGuard g(imgPixelsLock_);
 	if (g_hcam == NULL)
 	{
-		string log = " CMMTUCamDemo  SanpImage SOFTWARE ";
+		log = " CMMTUCamDemo  DEVICE_NOT_CONNECTED ";
         CUtils::cameraLog(log);
-		return -1 ;
+		return DEVICE_NOT_CONNECTED ;
 	}
 
     Nncam_put_Option(g_hcam, NNCAM_OPTION_RAW, 0);  // Set usual format
@@ -636,6 +647,8 @@ double CMMTUCamDemo::GetExposure() const
  */
 double CMMTUCamDemo::GetSequenceExposure() 
 {
+	string log = " CMMTUCamDemo  GetSequenceExposure";
+    CUtils::cameraLog(log);
     if (exposureSequence_.size() == 0) 
         return this->GetExposure();
 
@@ -741,6 +754,8 @@ int CMMTUCamDemo::StopSequenceAcquisition()
 int CMMTUCamDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    
+	string	log = " CMMTUCamDemo  OnExposure!";
+    CUtils::cameraLog(log);
     int ret = DEVICE_ERR;
     switch(eAct)
     {
@@ -776,6 +791,9 @@ int CMMTUCamDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
         break;
     }
 
+
+	log = " CMMTUCamDemo  OnExposure!  ret =  "+  to_string(static_cast<long long>(ret));
+    CUtils::cameraLog(log);
     return ret;
 }
 
@@ -786,6 +804,9 @@ int CMMTUCamDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 */
 int CMMTUCamDemo::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+	
+   string	log = " CMMTUCamDemo  OnBitDepth!";
+   CUtils::cameraLog(log);
    int ret = DEVICE_ERR;
    switch(eAct)
    {
@@ -890,6 +911,8 @@ int CMMTUCamDemo::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
    default:
       break;
    }
+   log = " CMMTUCamDemo  OnBitDepth!  ret =  " +  to_string(static_cast<long long>(ret));
+   CUtils::cameraLog(log);
    return ret; 
 }
 
@@ -899,6 +922,8 @@ int CMMTUCamDemo::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
 int CMMTUCamDemo::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    
+	string	log = " CMMTUCamDemo  OnBinning!";
+    CUtils::cameraLog(log);
     int ret = DEVICE_ERR;
     switch(eAct)
     {
@@ -919,6 +944,8 @@ int CMMTUCamDemo::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
                     
 					if(SUCCEEDED(Nncam_Stop(g_hcam)))      // Stop capture   
 					{
+						log = " CMMTUCamDemo  OnBinning  Nncam_Stop success.";
+                        CUtils::cameraLog(log);
 						ReleaseBuffer();
 
                   
@@ -932,6 +959,13 @@ int CMMTUCamDemo::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 						roiX_ = 0;
 						roiY_ = 0;
 				  }
+					else
+					{
+					
+						log = " CMMTUCamDemo  OnBinning  Nncam_Stop failed.";
+                        CUtils::cameraLog(log);
+					
+					}
                 }
 
                 OnPropertyChanged(MM::g_Keyword_Binning, val.c_str());
@@ -951,27 +985,41 @@ int CMMTUCamDemo::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
     default:
         break;
     }
+
+	log = " CMMTUCamDemo  OnBinning! ret = " + to_string(static_cast<long long>(ret));
+    CUtils::cameraLog(log);
     return ret; 
 }
 
 bool CMMTUCamDemo::IsCapturing() 
 {
+	 string log = " CMMTUCamDemo  IsCapturing";
+     CUtils::cameraLog(log);
      return !thd_->IsStopped();
 }
 
 static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 {
-    if (NNCAM_EVENT_IMAGE == nEvent)
+    
+	 string log = " CMMTUCamDemo  EventCallback";
+     CUtils::cameraLog(log);
+	if (NNCAM_EVENT_IMAGE == nEvent)
     {
         NncamFrameInfoV2 info = { 0 };
         HRESULT hr = Nncam_PullImageV2(g_hcamT, g_pImageDataT, 24, &info);
         if (FAILED(hr))
-            printf("failed to pull image, hr = %08x\n", hr);
+		{
+			printf("failed to pull image, hr = %08x\n", hr);
+			log = " CMMTUCamDemo  EventCallback  failed to pull image";
+            CUtils::cameraLog(log);
+		}
         else
         {
             /* After we get the image data, we can do anything for the data we want to do */
             printf("pull image ok, total = %u, res = %u x %u\n", ++g_totalT, info.width, info.height);
 			printf("  g_pImageData  ==  ");
+			log = " CMMTUCamDemo  EventCallback  pull image ok";
+            CUtils::cameraLog(log);
 			/*
 			wchar_t strPath[MAX_PATH];
 		    swprintf(strPath, L"%04u.jpg", m_nSnapFile++);
@@ -982,6 +1030,8 @@ static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
     else
     {
         printf("event callback: %d\n", nEvent);
+		log = " CMMTUCamDemo  event callback! " + to_string(static_cast<long long>(nEvent));
+        CUtils::cameraLog(log);
     }
 }
 
@@ -990,9 +1040,25 @@ int CMMTUCamDemo::StopCapture()
     m_bLiving = false;
 
     //TUCAM_Buf_AbortWait(m_opCam.hIdxTUCam);                 // If you called TUCAM_Buf_WaitForFrames()
+	string	log = " CMMTUCamDemo  StopCapture! ";
+    CUtils::cameraLog(log);
+    HRESULT hr = Nncam_Stop(g_hcam);                      // Stop capture   
+    if (FAILED(hr))
+	{
+	  	log = " CMMTUCamDemo  Nncam_Stop failed !  hr = " + to_string(static_cast<long long>(hr));
+        CUtils::cameraLog(log);
+	
+	}
+	else
+	{
+	
+	    log = " CMMTUCamDemo  Nncam_Stop success !  hr = " + to_string(static_cast<long long>(hr));
+        CUtils::cameraLog(log);
+	
+	}
 
-    Nncam_Stop(g_hcam);                      // Stop capture   
-    ReleaseBuffer();
+
+	ReleaseBuffer();
 
     return DEVICE_OK;
 
@@ -1001,6 +1067,8 @@ int CMMTUCamDemo::StopCapture()
 int CMMTUCamDemo::StartCapture()
 {
 
+	string	log = " CMMTUCamDemo  StartCapture! ";
+    CUtils::cameraLog(log);
 	memset(&m_header, 0, sizeof(m_header));
 	m_header.biSize = sizeof(BITMAPINFOHEADER);
 	m_header.biPlanes = 1;
@@ -1038,12 +1106,15 @@ int CMMTUCamDemo::StartCapture()
 		    string log = " CMMTUCamDemo  StartCapture failed to start camera";
             CUtils::cameraLog(log);
 			printf("failed to start camera, hr = %08x\n", hr);
+			return nRet;
 		}
         else
         {
 			string log = " CMMTUCamDemo  StartCapture success to start camera";
             CUtils::cameraLog(log);
             printf("press any key to exit\n");
+			
+			return DEVICE_OK;
             //getc(stdin);
         }
 
@@ -1070,7 +1141,8 @@ long CMMTUCamDemo::GetImageBufferSize() const
 
     return 0;
 */    
-    
+    string	log = " CMMTUCamDemo  GetImageBufferSize! ";
+    CUtils::cameraLog(log);
     return img_.Width() * img_.Height() * GetImageBytesPerPixel();
 }
 
@@ -1120,6 +1192,8 @@ unsigned CMMTUCamDemo::GetImageHeight() const
 
     return 0;
 */
+	string	log = " CMMTUCamDemo  GetImageHeight! ";
+    CUtils::cameraLog(log);
     return img_.Height();
 }
 
@@ -1139,6 +1213,9 @@ unsigned CMMTUCamDemo::GetImageBytesPerPixel() const
 
     return 1;
 */
+
+	string	log = " CMMTUCamDemo  GetImageBytesPerPixel! ";
+    CUtils::cameraLog(log);
     return img_.Depth();
 } 
 
@@ -1158,6 +1235,8 @@ unsigned CMMTUCamDemo::GetBitDepth() const
 
     return 8;
 */
+	string	log = " CMMTUCamDemo  GetBitDepth! ";
+    CUtils::cameraLog(log);
     return bitDepth_;
 }
 
@@ -1167,6 +1246,8 @@ unsigned CMMTUCamDemo::GetBitDepth() const
 */
 int CMMTUCamDemo::GetBinning() const
 {
+   string	log = " CMMTUCamDemo  GetBinning! ";
+   CUtils::cameraLog(log);
    char buf[MM::MaxStrLength];
    int ret = GetProperty(MM::g_Keyword_Binning, buf);
    if (ret != DEVICE_OK)
@@ -1180,6 +1261,9 @@ int CMMTUCamDemo::GetBinning() const
 */
 int CMMTUCamDemo::SetBinning(int binF)
 {
+
+   string	log = " CMMTUCamDemo  SetBinning! ";
+   CUtils::cameraLog(log);
    return SetProperty(MM::g_Keyword_Binning, CDeviceUtils::ConvertToString(binF));
 }
 
@@ -1189,6 +1273,9 @@ int CMMTUCamDemo::SetBinning(int binF)
 */
 void CMMTUCamDemo::SetExposure(double exp)
 {
+
+	string	log = " CMMTUCamDemo  SetExposure! ";
+    CUtils::cameraLog(log);
     if (exp < exposureMinimum_)
     {
        exp = exposureMinimum_;
@@ -1216,6 +1303,9 @@ void CMMTUCamDemo::SetExposure(double exp)
 
 int CMMTUCamDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
 {
+
+	string	log = " CMMTUCamDemo  SetROI! ";
+    CUtils::cameraLog(log);
     if (NULL == g_hcam)
         return DEVICE_NOT_CONNECTED;
 
@@ -1268,6 +1358,9 @@ int CMMTUCamDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
 */
 int CMMTUCamDemo::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& ySize)
 {
+
+    string	log = " CMMTUCamDemo  GetROI! ";
+    CUtils::cameraLog(log);
     x = roiX_;
     y = roiY_;
 
@@ -1311,6 +1404,8 @@ int CMMTUCamDemo::ClearROI()
 */
 int CMMTUCamDemo::ResizeImageBuffer()
 {
+	string	log = " CMMTUCamDemo  ResizeImageBuffer! ";
+    CUtils::cameraLog(log);
     if (NULL == g_hcam)
         return DEVICE_NOT_CONNECTED;
 
@@ -1378,6 +1473,8 @@ int CMMTUCamDemo::ResizeImageBuffer()
  */
 int CMMTUCamDemo::StartSequenceAcquisition(double interval)
 {
+	string	log = " CMMTUCamDemo  StartSequenceAcquisition! ";
+    CUtils::cameraLog(log);
     return StartSequenceAcquisition(LONG_MAX, interval, false);            
 }
 
@@ -1428,12 +1525,16 @@ int CMMTUCamDemo::StartSequenceAcquisition(long numImages, double interval_ms, b
 
 int CMMTUCamDemo::IsExposureSequenceable(bool& isSequenceable) const
 {
+	string	log = " CMMTUCamDemo  IsExposureSequenceable! ";
+    CUtils::cameraLog(log);
     isSequenceable = isSequenceable_;
     return DEVICE_OK;
 }
 
 int CMMTUCamDemo::GetExposureSequenceMaxLength(long& nrEvents) const
 {
+	string	log = " CMMTUCamDemo  GetExposureSequenceMaxLength! ";
+    CUtils::cameraLog(log);
     if (!isSequenceable_) 
     {
         return DEVICE_UNSUPPORTED_COMMAND;
@@ -1445,6 +1546,9 @@ int CMMTUCamDemo::GetExposureSequenceMaxLength(long& nrEvents) const
 
 int CMMTUCamDemo::StartExposureSequence()
 {
+
+	string	log = " CMMTUCamDemo  StartExposureSequence! ";
+    CUtils::cameraLog(log);
     if (!isSequenceable_) {
         return DEVICE_UNSUPPORTED_COMMAND;
     }
@@ -1456,6 +1560,8 @@ int CMMTUCamDemo::StartExposureSequence()
 
 int CMMTUCamDemo::StopExposureSequence()
 {
+	string	log = " CMMTUCamDemo  StopExposureSequence! ";
+    CUtils::cameraLog(log);
     if (!isSequenceable_) 
     {
         return DEVICE_UNSUPPORTED_COMMAND;
@@ -1472,6 +1578,9 @@ int CMMTUCamDemo::StopExposureSequence()
  */
 int CMMTUCamDemo::ClearExposureSequence()
 {
+
+	string	log = " CMMTUCamDemo  ClearExposureSequence! ";
+    CUtils::cameraLog(log);
     if (!isSequenceable_) 
     {
         return DEVICE_UNSUPPORTED_COMMAND;
@@ -1486,6 +1595,8 @@ int CMMTUCamDemo::ClearExposureSequence()
  */
 int CMMTUCamDemo::AddToExposureSequence(double exposureTime_ms) 
 {
+	string	log = " CMMTUCamDemo  AddToExposureSequence! ";
+    CUtils::cameraLog(log);
     if (!isSequenceable_)
     {
         return DEVICE_UNSUPPORTED_COMMAND;
@@ -1497,6 +1608,8 @@ int CMMTUCamDemo::AddToExposureSequence(double exposureTime_ms)
 
 int CMMTUCamDemo::SendExposureSequence() const 
 {
+	string	log = " CMMTUCamDemo  SendExposureSequence! ";
+    CUtils::cameraLog(log);
     if (!isSequenceable_) 
     {
         return DEVICE_UNSUPPORTED_COMMAND;
@@ -1510,6 +1623,8 @@ int CMMTUCamDemo::SendExposureSequence() const
  */
 int CMMTUCamDemo::InsertImage()
 {
+	string	log = " CMMTUCamDemo  InsertImage! ";
+    CUtils::cameraLog(log);
     MM::MMTime timeStamp = this->GetCurrentMMTime();
     char label[MM::MaxStrLength];
     this->GetLabel(label);
@@ -1571,6 +1686,9 @@ void CMMTUCamDemo::OnThreadExiting() throw()
 
 int CMMTUCamDemo::SetAllowedBinning() 
 {
+    string log = " CMMTUCamDemo  SetAllowedBinning";
+    CUtils::cameraLog(log);
+
     if (NULL == g_hcam)
         return DEVICE_NOT_CONNECTED;
 
@@ -1596,12 +1714,16 @@ int CMMTUCamDemo::SetAllowedBinning()
 
 int CMMTUCamDemo::AllocBuffer()
 {
+	 if (NULL == g_hcam)
+        return DEVICE_NOT_CONNECTED;
+
 	 g_pImageData = (BYTE*)malloc(m_header.biSizeImage);
 	 if (NULL == g_pImageData)
 	 {
 	     string log = " CMMTUCamDemo  AllocBuffer failed to malloc";
          CUtils::cameraLog(log);
 		 printf("failed to malloc\n");
+		  return DEVICE_OUT_OF_MEMORY; 
 	 }
 	 else
 	 {
@@ -1629,12 +1751,17 @@ CTUCamDemoThread::~CTUCamDemoThread() {};
 
 void CTUCamDemoThread::Stop() 
 {
+	string	log = " CMMTUCamDemo  CTUCamDemoThread Stop! ";
+    CUtils::cameraLog(log);
     MMThreadGuard g(this->stopLock_);
     stop_=true;
 }
 
 void CTUCamDemoThread::Start(long numImages, double intervalMs)
 {
+
+	string	log = " CMMTUCamDemo  CTUCamDemoThread Start! ";
+    CUtils::cameraLog(log);
     //OutputDebugString("[CTUCamDemoThread]:Start");
     MMThreadGuard g1(this->stopLock_);
     MMThreadGuard g2(this->suspendLock_);
@@ -1745,10 +1872,16 @@ int CMMTUCamDemo::InitTUCamDemoApi()
     {
         printf("no camera found or open failed\n");
 
-		log = "no camera found or open failed";
+		log = " CMMTUCamDemo  no camera found or open failed";
 		CUtils::cameraLog(log);
-        return -1;
+        return DEVICE_NOT_CONNECTED;
     }
+	else
+	{
+	   	log = " CMMTUCamDemo  camera  open success";
+		CUtils::cameraLog(log);
+	  
+	}
 
     return DEVICE_OK;
 }
@@ -1760,6 +1893,17 @@ int CMMTUCamDemo::UninitTUCamDemoApi()
     CUtils::cameraLog(log);
 	/* cleanup */
     Nncam_Close(g_hcam);                       
+	g_hcam =  NULL ;
+	log = " CMMTUCamDemo  UninitTUCamDemoApi  Nncam_Close  g_hcam";
+    CUtils::cameraLog(log);
+
+	/*
+	Nncam_Close(g_hcamT);    
+	g_hcamT = NULL;
+
+	log = " CMMTUCamDemo  UninitTUCamDemoApi  Nncam_Close  g_hcamT";
+    CUtils::cameraLog(log);
+	*/
 
 	ReleaseBuffer();
     return DEVICE_OK;
@@ -1767,20 +1911,42 @@ int CMMTUCamDemo::UninitTUCamDemoApi()
 
 int CMMTUCamDemo::ReleaseBuffer()
 {
-    if (g_pImageData)
+    string log = " CMMTUCamDemo  ReleaseBuffer !";
+    CUtils::cameraLog(log);
+    if (NULL == g_hcam)
+        return DEVICE_NOT_CONNECTED;
+
+	log = " CMMTUCamDemo  DEVICE_CONNECTED !";
+    CUtils::cameraLog(log);
+	if (g_pImageData)
 	{
 		free(g_pImageData);
 	    g_pImageData = NULL ;
 	}
+
+    log = " CMMTUCamDemo  g_pImageData free !";
+    CUtils::cameraLog(log);
+
+	/*
+	if(g_pImageDataT)
+	{
+		free(g_pImageDataT);
+	    g_pImageDataT = NULL ;
+	}
+	*/
+
+	log = " CMMTUCamDemo  g_pImageDataT free !";
+    CUtils::cameraLog(log);
+
 	if(g_pImageData == NULL)
 	{
-	    string log = " CMMTUCamDemo  ReleaseBuffer success";
+	    log = " CMMTUCamDemo  ReleaseBuffer success";
         CUtils::cameraLog(log);
 		return DEVICE_OK;
 	}
 	else
 	{
-	   string log = " CMMTUCamDemo  ReleaseBuffer failed";
+	   log = " CMMTUCamDemo  ReleaseBuffer failed";
        CUtils::cameraLog(log);
 	   return -1;
 	}

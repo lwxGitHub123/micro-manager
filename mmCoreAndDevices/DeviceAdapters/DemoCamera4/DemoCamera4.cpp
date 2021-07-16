@@ -76,6 +76,8 @@ MODULE_API void InitializeModuleData()
 
 MODULE_API MM::Device* CreateDevice(const char* deviceName)
 {
+   string log = " CDemoCamera4  CreateDevice";
+   CUtils::cameraLog(log);
    if (deviceName == 0)
       return 0;
 
@@ -86,9 +88,6 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
       return new CDemoCamera4();
    }
   
-
-   string log = " CDemoCamera4  CreateDevice";
-   CUtils::cameraLog(log);
    // ...supplied name not recognized
    return 0;
 }
@@ -705,6 +704,8 @@ unsigned CDemoCamera4::GetImageWidth() const
 */
 unsigned CDemoCamera4::GetImageHeight() const
 {
+   string log = " CDemoCamera4  GetImageHeight";
+   CUtils::cameraLog(log);
    return img_.Height();
 }
 
@@ -714,6 +715,8 @@ unsigned CDemoCamera4::GetImageHeight() const
 */
 unsigned CDemoCamera4::GetImageBytesPerPixel() const
 {
+   string log = " CDemoCamera4  GetImageBytesPerPixel";
+   CUtils::cameraLog(log);
    return img_.Depth();
 } 
 
@@ -725,6 +728,8 @@ unsigned CDemoCamera4::GetImageBytesPerPixel() const
 */
 unsigned CDemoCamera4::GetBitDepth() const
 {
+   string log = " CDemoCamera4  GetBitDepth";
+   CUtils::cameraLog(log);
    return bitDepth_;
 }
 
@@ -734,6 +739,8 @@ unsigned CDemoCamera4::GetBitDepth() const
 */
 long CDemoCamera4::GetImageBufferSize() const
 {
+   string log = " CDemoCamera4  GetImageBufferSize";
+   CUtils::cameraLog(log);
    return img_.Width() * img_.Height() * GetImageBytesPerPixel();
 }
 
@@ -790,7 +797,9 @@ int CDemoCamera4::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& yS
 {
 
 	//Nncam_get_Roi();
-
+   
+   string log = " CDemoCamera4  GetROI";
+   CUtils::cameraLog(log);
    x = roiX_;
    y = roiY_;
 
@@ -840,6 +849,8 @@ bool CDemoCamera4::SupportsMultiROI()
  */
 bool CDemoCamera4::IsMultiROISet()
 {
+   string log = " CDemoCamera4  IsMultiROISet";
+   CUtils::cameraLog(log);
    return multiROIXs_.size() > 0;
 }
 
@@ -851,6 +862,8 @@ bool CDemoCamera4::IsMultiROISet()
  */
 int CDemoCamera4::GetMultiROICount(unsigned int& count)
 {
+   string log = " CDemoCamera4  GetMultiROICount";
+   CUtils::cameraLog(log);
    count = (unsigned int) multiROIXs_.size();
    return DEVICE_OK;
 }
@@ -870,6 +883,10 @@ int CDemoCamera4::SetMultiROI(const unsigned int* xs, const unsigned int* ys,
       const unsigned* widths, const unsigned int* heights,
       unsigned numROIs)
 {
+
+   string log = " CDemoCamera4  SetMultiROI";
+   CUtils::cameraLog(log);
+
    multiROIXs_.clear();
    multiROIYs_.clear();
    multiROIWidths_.clear();
@@ -922,6 +939,10 @@ int CDemoCamera4::SetMultiROI(const unsigned int* xs, const unsigned int* ys,
 int CDemoCamera4::GetMultiROI(unsigned* xs, unsigned* ys, unsigned* widths,
       unsigned* heights, unsigned* length)
 {
+
+   string log = " CDemoCamera4  GetMultiROI";
+   CUtils::cameraLog(log);
+
    unsigned int roiCount = (unsigned int) multiROIXs_.size();
    if (roiCount > *length)
    {
@@ -960,6 +981,8 @@ double CDemoCamera4::GetExposure() const
  */
 double CDemoCamera4::GetSequenceExposure() 
 {
+   string log = " CDemoCamera4  GetSequenceExposure";
+   CUtils::cameraLog(log);
    if (exposureSequence_.size() == 0) 
       return this->GetExposure();
 
@@ -978,6 +1001,8 @@ double CDemoCamera4::GetSequenceExposure()
 */
 void CDemoCamera4::SetExposure(double exp)
 {
+   string log = " CDemoCamera4  SetExposure";
+   CUtils::cameraLog(log);
    SetProperty(MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(exp));
    GetCoreCallback()->OnExposureChanged(this, exp);;
 }
@@ -988,6 +1013,8 @@ void CDemoCamera4::SetExposure(double exp)
 */
 int CDemoCamera4::GetBinning() const
 {
+   string log = " CDemoCamera4  GetBinning";
+   CUtils::cameraLog(log);
    char buf[MM::MaxStrLength];
    int ret = GetProperty(MM::g_Keyword_Binning, buf);
    if (ret != DEVICE_OK)
@@ -1001,17 +1028,23 @@ int CDemoCamera4::GetBinning() const
 */
 int CDemoCamera4::SetBinning(int binF)
 {
+   string log = " CDemoCamera4  SetBinning";
+   CUtils::cameraLog(log);
    return SetProperty(MM::g_Keyword_Binning, CDeviceUtils::ConvertToString(binF));
 }
 
 int CDemoCamera4::IsExposureSequenceable(bool& isSequenceable) const
 {
+   string log = " CDemoCamera4  IsExposureSequenceable";
+   CUtils::cameraLog(log);
    isSequenceable = isSequenceable_;
    return DEVICE_OK;
 }
 
 int CDemoCamera4::GetExposureSequenceMaxLength(long& nrEvents) const
 {
+   string log = " CDemoCamera4  GetExposureSequenceMaxLength";
+   CUtils::cameraLog(log);
    if (!isSequenceable_) {
       return DEVICE_UNSUPPORTED_COMMAND;
    }
@@ -1022,6 +1055,8 @@ int CDemoCamera4::GetExposureSequenceMaxLength(long& nrEvents) const
 
 int CDemoCamera4::StartExposureSequence()
 {
+   string log = " CDemoCamera4  StartExposureSequence";
+   CUtils::cameraLog(log);
    if (!isSequenceable_) {
       return DEVICE_UNSUPPORTED_COMMAND;
    }
@@ -1033,6 +1068,8 @@ int CDemoCamera4::StartExposureSequence()
 
 int CDemoCamera4::StopExposureSequence()
 {
+   string log = " CDemoCamera4  StopExposureSequence";
+   CUtils::cameraLog(log);
    if (!isSequenceable_) {
       return DEVICE_UNSUPPORTED_COMMAND;
    }
@@ -1048,6 +1085,9 @@ int CDemoCamera4::StopExposureSequence()
  */
 int CDemoCamera4::ClearExposureSequence()
 {
+
+   string log = " CDemoCamera4  ClearExposureSequence";
+   CUtils::cameraLog(log);
    if (!isSequenceable_) {
       return DEVICE_UNSUPPORTED_COMMAND;
    }
@@ -1061,6 +1101,8 @@ int CDemoCamera4::ClearExposureSequence()
  */
 int CDemoCamera4::AddToExposureSequence(double exposureTime_ms) 
 {
+   string log = " CDemoCamera4  AddToExposureSequence";
+   CUtils::cameraLog(log);
    if (!isSequenceable_) {
       return DEVICE_UNSUPPORTED_COMMAND;
    }
@@ -1070,7 +1112,10 @@ int CDemoCamera4::AddToExposureSequence(double exposureTime_ms)
 }
 
 int CDemoCamera4::SendExposureSequence() const {
-   if (!isSequenceable_) {
+   
+	string log = " CDemoCamera4  SendExposureSequence";
+    CUtils::cameraLog(log);
+	if (!isSequenceable_) {
       return DEVICE_UNSUPPORTED_COMMAND;
    }
 
@@ -1079,6 +1124,8 @@ int CDemoCamera4::SendExposureSequence() const {
 
 int CDemoCamera4::SetAllowedBinning() 
 {
+   string log = " CDemoCamera4  SetAllowedBinning";
+   CUtils::cameraLog(log);
    vector<string> binValues;
    binValues.push_back("1");
    binValues.push_back("2");
@@ -1106,6 +1153,8 @@ int CDemoCamera4::SetAllowedBinning()
  */
 int CDemoCamera4::StartSequenceAcquisition(double interval)
 {
+   string log = " CDemoCamera4  StartSequenceAcquisition";
+   CUtils::cameraLog(log);
    return StartSequenceAcquisition(LONG_MAX, interval, false);            
 }
 
@@ -1114,6 +1163,9 @@ int CDemoCamera4::StartSequenceAcquisition(double interval)
 */                                                                        
 int CDemoCamera4::StopSequenceAcquisition()                                     
 {
+
+   string log = " CDemoCamera4  StopSequenceAcquisition";
+   CUtils::cameraLog(log);
    if (!thd_->IsStopped()) {
       thd_->Stop();                                                       
       thd_->wait();                                                       
@@ -1129,6 +1181,9 @@ int CDemoCamera4::StopSequenceAcquisition()
 */
 int CDemoCamera4::StartSequenceAcquisition(long numImages, double interval_ms, bool stopOnOverflow)
 {
+
+   string log = " CDemoCamera4  StartSequenceAcquisition";
+   CUtils::cameraLog(log);
    if (IsCapturing())
       return DEVICE_CAMERA_BUSY_ACQUIRING;
 
@@ -1147,6 +1202,8 @@ int CDemoCamera4::StartSequenceAcquisition(long numImages, double interval_ms, b
  */
 int CDemoCamera4::InsertImage()
 {
+   string log = " CDemoCamera4  InsertImage";
+   CUtils::cameraLog(log);
    MM::MMTime timeStamp = this->GetCurrentMMTime();
    char label[MM::MaxStrLength];
    this->GetLabel(label);
@@ -1194,6 +1251,8 @@ int CDemoCamera4::InsertImage()
  */
 int CDemoCamera4::RunSequenceOnThread(MM::MMTime startTime)
 {
+   string log = " CDemoCamera4  RunSequenceOnThread";
+   CUtils::cameraLog(log);
    int ret=DEVICE_ERR;
    
    // Trigger
@@ -1229,7 +1288,10 @@ int CDemoCamera4::RunSequenceOnThread(MM::MMTime startTime)
 };
 
 bool CDemoCamera4::IsCapturing() {
-   return !thd_->IsStopped();
+     
+   string log = " CDemoCamera4  IsCapturing";
+   CUtils::cameraLog(log);
+	return !thd_->IsStopped();
 }
 
 /*
@@ -1239,6 +1301,9 @@ void CDemoCamera4::OnThreadExiting() throw()
 {
    try
    {
+
+	  string log = " CDemoCamera4  OnThreadExiting";
+      CUtils::cameraLog(log);
       LogMessage(g_Msg_SEQUENCE_ACQUISITION_THREAD_EXITING);
       GetCoreCallback()?GetCoreCallback()->AcqFinished(this,0):DEVICE_OK;
    }
@@ -1264,12 +1329,17 @@ MySequenceThread::MySequenceThread(CDemoCamera4* pCam)
 MySequenceThread::~MySequenceThread() {};
 
 void MySequenceThread::Stop() {
+   string log = " CDemoCamera4  MySequenceThread Stop";
+   CUtils::cameraLog(log);
    MMThreadGuard g(this->stopLock_);
    stop_=true;
 }
 
 void MySequenceThread::Start(long numImages, double intervalMs)
 {
+
+   string log = " CDemoCamera4  MySequenceThread Start";
+   CUtils::cameraLog(log);
    MMThreadGuard g1(this->stopLock_);
    MMThreadGuard g2(this->suspendLock_);
    numImages_=numImages;
@@ -1330,6 +1400,9 @@ int MySequenceThread::svc(void) throw()
 
 int CDemoCamera4::OnMaxExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnMaxExposure ";
+   CUtils::cameraLog(log);
    if (eAct == MM::BeforeGet)
    {
       pProp->Set(exposureMaximum_);
@@ -1348,6 +1421,10 @@ int CDemoCamera4::OnMaxExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnTestProperty(MM::PropertyBase* pProp, MM::ActionType eAct, long indexx)
 {
+
+   string log = " CDemoCamera4  OnTestProperty ";
+   CUtils::cameraLog(log);
+
    if (eAct == MM::BeforeGet)
    {
       pProp->Set(testProperty_[indexx]);
@@ -1366,6 +1443,10 @@ int CDemoCamera4::OnTestProperty(MM::PropertyBase* pProp, MM::ActionType eAct, l
 */
 int CDemoCamera4::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnBinning ";
+   CUtils::cameraLog(log);
+
    int ret = DEVICE_ERR;
    switch(eAct)
    {
@@ -1416,6 +1497,9 @@ int CDemoCamera4::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 */
 int CDemoCamera4::OnPixelType(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnPixelType ";
+   CUtils::cameraLog(log);
    int ret = DEVICE_ERR;
    switch(eAct)
    {
@@ -1516,6 +1600,8 @@ int CDemoCamera4::OnPixelType(MM::PropertyBase* pProp, MM::ActionType eAct)
 */
 int CDemoCamera4::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+   string log = " CDemoCamera4  OnBitDepth ";
+   CUtils::cameraLog(log);
    int ret = DEVICE_ERR;
    switch(eAct)
    {
@@ -1627,6 +1713,9 @@ int CDemoCamera4::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
 */
 int CDemoCamera4::OnReadoutTime(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnReadoutTime ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet)
    {
       double readoutMs;
@@ -1644,6 +1733,9 @@ int CDemoCamera4::OnReadoutTime(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnDropPixels(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnDropPixels ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet)
    {
       long tvalue = 0;
@@ -1660,6 +1752,8 @@ int CDemoCamera4::OnDropPixels(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnFastImage(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+   string log = " CDemoCamera4  OnFastImage ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet)
    {
       long tvalue = 0;
@@ -1676,6 +1770,9 @@ int CDemoCamera4::OnFastImage(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnSaturatePixels(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnSaturatePixels ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet)
    {
       long tvalue = 0;
@@ -1692,6 +1789,9 @@ int CDemoCamera4::OnSaturatePixels(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnFractionOfPixelsToDropOrSaturate(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnFractionOfPixelsToDropOrSaturate ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet)
    {
       double tvalue = 0;
@@ -1708,6 +1808,10 @@ int CDemoCamera4::OnFractionOfPixelsToDropOrSaturate(MM::PropertyBase* pProp, MM
 
 int CDemoCamera4::OnShouldRotateImages(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnShouldRotateImages ";
+   CUtils::cameraLog(log);
+
    if (eAct == MM::AfterSet)
    {
       long tvalue = 0;
@@ -1724,6 +1828,10 @@ int CDemoCamera4::OnShouldRotateImages(MM::PropertyBase* pProp, MM::ActionType e
 
 int CDemoCamera4::OnShouldDisplayImageNumber(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnShouldDisplayImageNumber ";
+   CUtils::cameraLog(log);
+
    if (eAct == MM::AfterSet)
    {
       long tvalue = 0;
@@ -1740,6 +1848,9 @@ int CDemoCamera4::OnShouldDisplayImageNumber(MM::PropertyBase* pProp, MM::Action
 
 int CDemoCamera4::OnStripeWidth(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnStripeWidth ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet)
    {
       pProp->Get(stripeWidth_);
@@ -1754,6 +1865,9 @@ int CDemoCamera4::OnStripeWidth(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnSupportsMultiROI(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnSupportsMultiROI ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet)
    {
       long tvalue = 0;
@@ -1770,6 +1884,9 @@ int CDemoCamera4::OnSupportsMultiROI(MM::PropertyBase* pProp, MM::ActionType eAc
 
 int CDemoCamera4::OnMultiROIFillValue(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnMultiROIFillValue ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet)
    {
       long tvalue = 0;
@@ -1790,6 +1907,9 @@ int CDemoCamera4::OnMultiROIFillValue(MM::PropertyBase* pProp, MM::ActionType eA
 */
 int CDemoCamera4::OnScanMode(MM::PropertyBase* pProp, MM::ActionType eAct)
 { 
+
+   string log = " CDemoCamera4  OnScanMode ";
+   CUtils::cameraLog(log);
    if (eAct == MM::AfterSet) {
       pProp->Get(scanMode_);
       SetAllowedBinning();
@@ -1810,6 +1930,9 @@ int CDemoCamera4::OnScanMode(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnCameraCCDXSize(MM::PropertyBase* pProp , MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnCameraCCDXSize ";
+   CUtils::cameraLog(log);
    if (eAct == MM::BeforeGet)
    {
 		pProp->Set(cameraCCDXSize_);
@@ -1832,6 +1955,9 @@ int CDemoCamera4::OnCameraCCDXSize(MM::PropertyBase* pProp , MM::ActionType eAct
 
 int CDemoCamera4::OnCameraCCDYSize(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+	   
+   string log = " CDemoCamera4  OnCameraCCDYSize ";
+   CUtils::cameraLog(log);
    if (eAct == MM::BeforeGet)
    {
 		pProp->Set(cameraCCDYSize_);
@@ -1854,6 +1980,9 @@ int CDemoCamera4::OnCameraCCDYSize(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnTriggerDevice(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnTriggerDevice ";
+   CUtils::cameraLog(log);
    if (eAct == MM::BeforeGet)
    {
       pProp->Set(triggerDevice_.c_str());
@@ -1868,6 +1997,9 @@ int CDemoCamera4::OnTriggerDevice(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnCCDTemp(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnCCDTemp ";
+   CUtils::cameraLog(log);
    if (eAct == MM::BeforeGet)
    {
       pProp->Set(ccdT_);
@@ -1881,6 +2013,9 @@ int CDemoCamera4::OnCCDTemp(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnIsSequenceable(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnIsSequenceable ";
+   CUtils::cameraLog(log);
    std::string val = "Yes";
    if (eAct == MM::BeforeGet)
    {
@@ -1906,6 +2041,8 @@ int CDemoCamera4::OnIsSequenceable(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnMode(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+   string log = " CDemoCamera4  OnMode ";
+   CUtils::cameraLog(log);
    std::string val;
    if (eAct == MM::BeforeGet)
    {
@@ -1947,6 +2084,9 @@ int CDemoCamera4::OnMode(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnPCF(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnPCF ";
+   CUtils::cameraLog(log);
    if (eAct == MM::BeforeGet)
    {
       pProp->Set(pcf_);
@@ -1960,6 +2100,8 @@ int CDemoCamera4::OnPCF(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnPhotonFlux(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+   string log = " CDemoCamera4  OnPhotonFlux ";
+   CUtils::cameraLog(log);
    if (eAct == MM::BeforeGet)
    {
       pProp->Set(photonFlux_);
@@ -1973,6 +2115,9 @@ int CDemoCamera4::OnPhotonFlux(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnReadNoise(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+
+   string log = " CDemoCamera4  OnReadNoise ";
+   CUtils::cameraLog(log);
    if (eAct == MM::BeforeGet)
    {
       pProp->Set(readNoise_);
@@ -1987,6 +2132,8 @@ int CDemoCamera4::OnReadNoise(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int CDemoCamera4::OnCrash(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+   string log = " CDemoCamera4  OnCrash ";
+   CUtils::cameraLog(log);
    AddAllowedValue("SimulateCrash", "");
    AddAllowedValue("SimulateCrash", "Dereference Null Pointer");
    AddAllowedValue("SimulateCrash", "Divide by Zero");
@@ -2065,6 +2212,8 @@ int CDemoCamera4::ResizeImageBuffer()
 
 void CDemoCamera4::GenerateEmptyImage(ImgBuffer& img)
 {
+   string log = " CDemoCamera4  GenerateEmptyImage ";
+   CUtils::cameraLog(log);
    MMThreadGuard g(imgPixelsLock_);
    if (img.Height() == 0 || img.Width() == 0 || img.Depth() == 0)
       return;
@@ -2083,7 +2232,9 @@ void CDemoCamera4::GenerateEmptyImage(ImgBuffer& img)
 */
 void CDemoCamera4::GenerateSyntheticImage(ImgBuffer& img, double exp)
 {
-  
+   string log = " CDemoCamera4  GenerateSyntheticImage ";
+   CUtils::cameraLog(log);
+
    MMThreadGuard g(imgPixelsLock_);
 
    if (mode_ == MODE_NOISE)
@@ -2479,6 +2630,9 @@ void CDemoCamera4::GenerateSyntheticImage(ImgBuffer& img, double exp)
 
 bool CDemoCamera4::GenerateColorTestPattern(ImgBuffer& img)
 {
+
+   string log = " CDemoCamera4  GenerateColorTestPattern ";
+   CUtils::cameraLog(log);
    unsigned width = img.Width(), height = img.Height();
    switch (img.Depth())
    {
@@ -2557,6 +2711,8 @@ bool CDemoCamera4::GenerateColorTestPattern(ImgBuffer& img)
 
 void CDemoCamera4::TestResourceLocking(const bool recurse)
 {
+   string log = " CDemoCamera4  TestResourceLocking ";
+   CUtils::cameraLog(log);
    if(recurse)
       TestResourceLocking(false);
 }
@@ -2566,9 +2722,12 @@ void CDemoCamera4::TestResourceLocking(const bool recurse)
 */
 void CDemoCamera4::AddBackgroundAndNoise(ImgBuffer& img, double mean, double stdDev)
 { 
-	char buf[MM::MaxStrLength];
+
+   string log = " CDemoCamera4  AddBackgroundAndNoise ";
+   CUtils::cameraLog(log);
+   char buf[MM::MaxStrLength];
    GetProperty(MM::g_Keyword_PixelType, buf);
-	std::string pixelType(buf);
+   std::string pixelType(buf);
 
    int maxValue = 1 << GetBitDepth();
    long nrPixels = img.Width() * img.Height();
@@ -2618,7 +2777,10 @@ void CDemoCamera4::AddBackgroundAndNoise(ImgBuffer& img, double mean, double std
 */
 void CDemoCamera4::AddSignal(ImgBuffer& img, double photonFlux, double exp, double cf)
 { 
-	char buf[MM::MaxStrLength];
+
+   string log = " CDemoCamera4  AddSignal ";
+   CUtils::cameraLog(log);
+   char buf[MM::MaxStrLength];
    GetProperty(MM::g_Keyword_PixelType, buf);
 	std::string pixelType(buf);
 
@@ -2671,6 +2833,9 @@ void CDemoCamera4::AddSignal(ImgBuffer& img, double photonFlux, double exp, doub
  */
 double CDemoCamera4::GaussDistributedValue(double mean, double std)
 {
+   string logger = " CDemoCamera4  GaussDistributedValue ";
+   CUtils::cameraLog(logger);
+
    double s = 2;
    double u = 1; // incosequential, but avoid potantial use of uninitialized value
    double v;
@@ -2690,6 +2855,9 @@ double CDemoCamera4::GaussDistributedValue(double mean, double std)
 
 int CDemoCamera4::RegisterImgManipulatorCallBack(ImgManipulator* imgManpl)
 {
+   string log = " CDemoCamera4  RegisterImgManipulatorCallBack ";
+   CUtils::cameraLog(log);
+
    imgManpl_ = imgManpl;
    return DEVICE_OK;
 }
