@@ -280,6 +280,7 @@ private:
 
     bool dropPixels_;
     bool fastImage_;
+	//bool snapFlag_ ;
     bool saturatePixels_;
     double fractionOfPixelsToDropOrSaturate_;
     bool shouldRotateImages_;
@@ -293,6 +294,9 @@ private:
 
     friend class CTUCamDemoThread;
     CTUCamDemoThread * thd_;
+
+	//HNncam g_hcam ;
+
 
 private:
 	void TestImage(ImgBuffer& img, double exp);
@@ -310,6 +314,7 @@ private:
 
     int StopCapture();
     int StartCapture();
+	int RestartCapture();
     int WaitForFrame(ImgBuffer& img);
 	int CopyToFrame(ImgBuffer& img,int nWidth,int nHeight,int CopyToFrame);
 
@@ -337,9 +342,9 @@ private:
     HANDLE          m_hThdTempEvt;          // To get the value of temperature event handle
 
 
-	HNncam g_hcam ;
-	void* g_pImageData;
-	unsigned g_total;
+	//static HNncam g_hcam ;
+	//void* g_pImageData;
+	//unsigned g_total;
 
 	BITMAPINFOHEADER	m_header;
 	/*
