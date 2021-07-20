@@ -311,7 +311,7 @@ private:
     int StopCapture();
     int StartCapture();
     int WaitForFrame(ImgBuffer& img);
-	int CopyToFrame(ImgBuffer& img,int nWidth,int nHeight);
+	int CopyToFrame(ImgBuffer& img,int nWidth,int nHeight,int CopyToFrame);
 
 
     bool SaveRaw(char *pfileName, unsigned char *pData, unsigned long ulSize);
@@ -350,7 +350,7 @@ private:
 	TUCAM_TRGOUT_ATTR  m_tgrOutAttr;        // The output trigger parameters
 	TUCAM_TRGOUTPUT    m_tgrOutPara;        // The output trigger parameter port
 	*/
-
+	unsigned short   mbiBitCount ;
 };
 
 

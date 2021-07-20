@@ -30,6 +30,7 @@
 #include "ModuleInterface.h"
 #include <sstream>
 #include <algorithm>
+#include "Utils.h"
 
 #include <iostream>
 #include <sys/stat.h>
@@ -10537,6 +10538,11 @@ void CRaptorEPIX::GenerateEmptyImage(ImgBuffer& img)
 {
    //thd_->Suspend(); MMThreadGuard g(imgPixelsLock_);
    thd_->Suspend(); MMThreadGuard g2(g_serialLock_[UNITSOPENMAP]);
+
+   string log = " CMMTUCamDemo  GenerateEmptyImage   img.Height() = " + to_string(static_cast<long long>(img.Height())) 
+	   + "    img.Width() =  "  +  to_string(static_cast<long long>(img.Width())) 
+	   + "  img.Depth() =  " + to_string(static_cast<long long>(img.Depth()));
+   CUtils::cameraLog(log);
 
    if (img.Height() == 0 || img.Width() == 0 || img.Depth() == 0)
       return;

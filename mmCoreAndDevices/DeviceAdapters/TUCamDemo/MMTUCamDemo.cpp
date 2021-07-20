@@ -153,6 +153,7 @@ const char* g_FileName   = "\\Image";
 // constants for naming pixel types (allowed values of the "PixelType" property)
 const char* g_PixelType_8bit     = "8bit";
 const char* g_PixelType_16bit    = "16bit";
+const char* g_PixelType_24bitRGB = "24bitRGB";
 const char* g_PixelType_32bitRGB = "32bitRGB";
 const char* g_PixelType_64bitRGB = "64bitRGB";
 const char* g_PixelType_32bit    = "32bit";  // floating point greyscale
@@ -205,6 +206,7 @@ int CMMTUCamDemo::s_nCntCam  = 0;
 HNncam g_hcamT ;
 void* g_pImageDataT;
 unsigned g_totalT;
+bool m_bPaused = false;
 
 ///////////////////////////////////////////////////////////////////////////////
 // CMMTUCamDemo implementation
@@ -253,7 +255,8 @@ CMMTUCamDemo::CMMTUCamDemo():
     returnToSoftwareTriggers_(false),
 	g_hcam(NULL),
 	g_pImageData(NULL),
-	g_total(0)
+	g_total(0),
+	mbiBitCount(24)
 {
     memset(testProperty_,0,sizeof(testProperty_));
 
@@ -363,6 +366,47 @@ int CMMTUCamDemo::Initialize()
     if (nRet != DEVICE_OK)
         return nRet;
 
+
+   // pixel type
+   vector<string> pixelTypeValues;
+   pAct = new CPropertyAction (this, &CMMTUCamDemo::OnPixelType);
+   //nRet = CreateStringProperty(MM::g_Keyword_PixelType, g_PixelType_8bit, false, pAct);
+   //assert(nRet == DEVICE_OK);
+
+   int nWidth = 0, nHeight = 0;
+   Nncam_get_Size(g_hcam, &nWidth, &nHeight);
+   unsigned short ucChannels = TDIBWIDTHBYTES(nWidth * mbiBitCount)/nWidth;
+
+   if (3 == ucChannels)
+   {
+		nRet = CreateProperty(MM::g_Keyword_PixelType, g_PixelType_24bitRGB, MM::String, false, pAct);
+		log = " CMMTUCamDemo  Initialize   pixel type  nRet = "  + to_string(static_cast<long long>(nRet));
+        CUtils::cameraLog(log);
+		assert(nRet == DEVICE_OK);
+		pixelTypeValues.push_back(g_PixelType_24bitRGB);
+	}
+
+   nRet = SetAllowedValues(MM::g_Keyword_PixelType, pixelTypeValues);
+  /*
+   string pixelType;
+   MM::PropertyBase* pProp ;
+   pProp->Get(pixelType);
+   */
+    
+   char buf[MM::MaxStrLength];
+   int ret = GetProperty(MM::g_Keyword_PixelType, buf);
+   if (ret != DEVICE_OK)
+        return ret;
+
+   std::string pixelType(buf);
+
+
+   log = " CMMTUCamDemo  SetAllowedValues  nRet =  " + to_string(static_cast<long long>(nRet))  + "   pixelType =  " + pixelType;
+   CUtils::cameraLog(log);
+   if (nRet != DEVICE_OK)
+      return nRet;
+
+
    // Bit depth
    pAct = new CPropertyAction (this, &CMMTUCamDemo::OnBitDepth);
    nRet = CreateIntegerProperty("BitDepth", 8, false, pAct);
@@ -385,7 +429,13 @@ int CMMTUCamDemo::Initialize()
    nRet = CreateProperty(MM::g_Keyword_Exposure, "10.0", MM::Float, false, pAct);
    assert(nRet == DEVICE_OK);
 
-
+    // setup the buffer
+   // ----------------
+  
+   nRet = ResizeImageBuffer();
+   if (nRet != DEVICE_OK)
+      return nRet;
+   
       // initialize image buffer
     nRet = StartCapture();
     if (nRet != DEVICE_OK)
@@ -427,7 +477,9 @@ void CMMTUCamDemo::TestResourceLocking(const bool recurse)
 
 void CMMTUCamDemo::GenerateEmptyImage(ImgBuffer& img)
 {
-   string log = " CMMTUCamDemo  GenerateEmptyImage";
+   string log = " CMMTUCamDemo  GenerateEmptyImage   img.Height() = " + to_string(static_cast<long long>(img.Height())) 
+	   + "    img.Width() =  "  +  to_string(static_cast<long long>(img.Width())) 
+	   + "  img.Depth() =  " + to_string(static_cast<long long>(img.Depth()));
    CUtils::cameraLog(log);
    MMThreadGuard g(imgPixelsLock_);
    if (img.Height() == 0 || img.Width() == 0 || img.Depth() == 0)
@@ -508,10 +560,13 @@ int CMMTUCamDemo::SnapImage()
    return DEVICE_OK;
 }
 
-int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight)
+int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight,int ucChannels)
 {
 
-		string log = " CMMTUCamDemo  CopyToFrame";
+		string log = " CMMTUCamDemo  CopyToFrame  nWidth  =  "+ to_string(static_cast<long long>(nWidth)) 
+			+ "  nHeight = "+ to_string(static_cast<long long>(nHeight)) +  "  img.Height() =  "  + to_string(static_cast<long long>(img.Height())) 
+			+  "  img.Width() =  "  + to_string(static_cast<long long>(img.Width())) 
+			+ "   img.Depth() =  "  + to_string(static_cast<long long>(img.Depth())) ;
         CUtils::cameraLog(log);
 //         char sz[256] = {0};
 //         sprintf(sz, "[TUCAM_Buf_WaitForFrame]:%d, %d, %d, %d\n", m_frame.usWidth, m_frame.usHeight, m_frame.ucElemBytes, m_frame.ucChannels);
@@ -522,7 +577,7 @@ int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight)
 
         int nWid = nWidth;
         int nHei = nHeight;
-        int nPix = nWid * nHei;
+        int nPix = nWid * nHei*ucChannels;
 
 //#ifdef _WIN64
         /*
@@ -534,18 +589,31 @@ int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight)
             {
 				*/
 #ifdef _WIN64
-                unsigned short* pSrc = (unsigned short *)(g_pImageData);
+                unsigned short* pSrc = (unsigned short *)(g_pImageDataT);
                 unsigned short* pDst = (unsigned short *)(img.GetPixelsRW());
 
+				log = " CMMTUCamDemo  CopyToFrame  _WIN64  nPix = "  + to_string(static_cast<long long>(nPix));
+                CUtils::cameraLog(log);
+				/*
                 for (int i=0; i<nPix; ++i) 
                 {
+
+				    log = " CMMTUCamDemo  CopyToFrame  _WIN64  i = "  + to_string(static_cast<long long>(i));
+                    CUtils::cameraLog(log);
                     *pDst++ = *pSrc++;
                     *pDst++ = *pSrc++;
                     *pDst++ = *pSrc++;
                     *pDst++ = 0;
                 }
+				*/
+
+				memcpy((void*)pDst, pSrc, nPix);
+
 #else
-                unsigned short* pSrc = (unsigned short *)(g_pImageData);
+                
+		        log = " CMMTUCamDemo  CopyToFrame    nPix = "  + to_string(static_cast<long long>(nPix));
+                CUtils::cameraLog(log);
+		        unsigned short* pSrc = (unsigned short *)(g_pImageData);
                 unsigned char* pDst  = (unsigned char *)(img.GetPixelsRW());
 
                 for (int i=0; i<nPix; ++i) 
@@ -614,6 +682,7 @@ int CMMTUCamDemo::WaitForFrame(ImgBuffer& img)
   
 	int nWidth = 0, nHeight = 0;
     HRESULT hr = Nncam_get_Size(g_hcam, &nWidth, &nHeight);
+	unsigned short ucChannels = TDIBWIDTHBYTES(nWidth * mbiBitCount)/nWidth;
     if (FAILED(hr))
 	{
 		
@@ -621,7 +690,7 @@ int CMMTUCamDemo::WaitForFrame(ImgBuffer& img)
 	    CUtils::cameraLog("failed to get size, hr = "+ hr);
     }
 
-	CopyToFrame(img,nWidth,nHeight);
+	CopyToFrame(img,nWidth,nHeight,ucChannels);
 
     return DEVICE_NATIVE_MODULE_FAILED;
 }
@@ -782,7 +851,7 @@ int CMMTUCamDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
         break;
     case MM::BeforeGet:
         {
-            double dblExp = 0.0f;
+            double dblExp = 10.0f;
 			unsigned dblExp1 = dblExp;
 
             Nncam_get_ExpoTime(g_hcam,&dblExp1);
@@ -802,6 +871,138 @@ int CMMTUCamDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 }
 
 
+/**
+* Handles "PixelType" property.
+*/
+int CMMTUCamDemo::OnPixelType(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+
+   string log = " CMMTUCamDemo  OnPixelType ";
+   CUtils::cameraLog(log);
+
+   int nWidth = 0, nHeight = 0;
+   Nncam_get_Size(g_hcam, &nWidth, &nHeight);
+   unsigned short ucChannels = TDIBWIDTHBYTES(nWidth * mbiBitCount)/nWidth;
+
+
+   int ret = DEVICE_ERR;
+   switch(eAct)
+   {
+   case MM::AfterSet:
+      {
+         if(IsCapturing())
+            return DEVICE_CAMERA_BUSY_ACQUIRING;
+
+         string pixelType;
+         pProp->Get(pixelType);
+
+		 log = " CMMTUCamDemo  OnPixelType  AfterSet pixelType = "  + pixelType;
+         CUtils::cameraLog(log);
+
+         if (pixelType.compare(g_PixelType_8bit) == 0)
+         {
+            nComponents_ = 1;
+            img_.Resize(img_.Width(), img_.Height(), 1);
+            bitDepth_ = 8;
+            ret=DEVICE_OK;
+         }
+         else if (pixelType.compare(g_PixelType_16bit) == 0)
+         {
+            nComponents_ = 1;
+            img_.Resize(img_.Width(), img_.Height(), 2);
+            bitDepth_ = 16;
+            ret=DEVICE_OK;
+         }		 
+         else if ( pixelType.compare(g_PixelType_24bitRGB) == 0)
+         {
+            nComponents_ = 3;
+            img_.Resize(img_.Width(), img_.Height(), 3);
+            bitDepth_ = 8;
+            ret=DEVICE_OK;
+         }
+         else if ( pixelType.compare(g_PixelType_32bitRGB) == 0)
+         {
+            nComponents_ = 4;
+            img_.Resize(img_.Width(), img_.Height(), 4);
+            bitDepth_ = 8;
+            ret=DEVICE_OK;
+         }
+         else if ( pixelType.compare(g_PixelType_64bitRGB) == 0)
+         {
+            nComponents_ = 4;
+            img_.Resize(img_.Width(), img_.Height(), 8);
+            bitDepth_ = 16;
+            ret=DEVICE_OK;
+         }
+         else if ( pixelType.compare(g_PixelType_32bit) == 0)
+         {
+            nComponents_ = 1;
+            img_.Resize(img_.Width(), img_.Height(), 4);
+            bitDepth_ = 32;
+            ret=DEVICE_OK;
+         }
+         else
+         {
+            // on error switch to default pixel type
+            nComponents_ = 1;
+            img_.Resize(img_.Width(), img_.Height(), 1);
+            pProp->Set(g_PixelType_8bit);
+            bitDepth_ = 8;
+            ret = ERR_UNKNOWN_MODE;
+         }
+      }
+      break;
+   case MM::BeforeGet:
+      {
+         long bytesPerPixel = GetImageBytesPerPixel();
+		 log = " CMMTUCamDemo  OnPixelType  BeforeGet bytesPerPixel = "  + to_string(static_cast<long long>(bytesPerPixel));
+         CUtils::cameraLog(log);
+         
+		 if (bytesPerPixel == 1)
+         {
+         	pProp->Set(g_PixelType_8bit);
+         }
+         else if (bytesPerPixel == 2)
+         {
+         	pProp->Set(g_PixelType_16bit);
+         }
+		 else if (bytesPerPixel == 3)
+         {
+         	pProp->Set(g_PixelType_24bitRGB);
+         }
+         else if (bytesPerPixel == 4)
+         {
+            if (nComponents_ == 4)
+            {
+			   pProp->Set(g_PixelType_32bitRGB);
+            }
+            else if (nComponents_ == 1)
+            {
+               pProp->Set(::g_PixelType_32bit);
+            }
+         }
+         else if (bytesPerPixel == 8)
+         {
+            pProp->Set(g_PixelType_64bitRGB);
+         }
+		 else
+         {
+            pProp->Set(g_PixelType_8bit);
+         }
+
+		if(ucChannels == 3)
+		{
+		    pProp->Set(g_PixelType_24bitRGB);
+		}
+		 
+
+         ret = DEVICE_OK;
+      } break;
+   default:
+      break;
+   }
+   return ret; 
+}
 
 /**
 * Handles "BitDepth" property.
@@ -822,7 +1023,10 @@ int CMMTUCamDemo::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
          long bitDepth;
          pProp->Get(bitDepth);
 
-			unsigned int bytesPerComponent;
+		 unsigned int bytesPerComponent;
+
+		 log = " CMMTUCamDemo  OnBitDepth!   bitDepth=  " + to_string(static_cast<long long>(bitDepth));
+         CUtils::cameraLog(log);
 
          switch (bitDepth) {
             case 8:
@@ -909,6 +1113,8 @@ int CMMTUCamDemo::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
       } break;
    case MM::BeforeGet:
       {
+         log = " CMMTUCamDemo  OnBitDepth!  BeforeGet  bitDepth_ =  " +  to_string(static_cast<long long>(bitDepth_));
+         CUtils::cameraLog(log);
          pProp->Set((long)bitDepth_);
          ret=DEVICE_OK;
       } break;
@@ -1037,6 +1243,51 @@ static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 			Mat img = CImgProc::Rgb24ToMat(g_pImageDataT,info.height,info.width);
 			imwrite(imgPath,img);
 			
+			/*
+			if( g_totalT == 1)
+			{
+			    HRESULT hr = Nncam_Stop(g_hcamT);                      // Stop capture   
+				if (FAILED(hr))
+				{
+	  				log = " CMMTUCamDemo  Nncam_Stop failed !  hr = " + to_string(static_cast<long long>(hr));
+					CUtils::cameraLog(log);
+	
+				}
+				else
+				{
+	
+					log = " CMMTUCamDemo  Nncam_Stop success !  hr = " + to_string(static_cast<long long>(hr));
+					CUtils::cameraLog(log);
+	
+				}
+			
+			}
+			*/
+			
+			if(g_totalT == 1)
+			{
+			
+				
+			   m_bPaused = !m_bPaused;
+			   HRESULT hr = Nncam_Pause(g_hcamT, m_bPaused);
+			   if (FAILED(hr))
+				{
+	  				log = " CMMTUCamDemo  Nncam_Pause failed !  hr = " + to_string(static_cast<long long>(hr));
+					CUtils::cameraLog(log);
+	
+				}
+				else
+				{
+	
+					log = " CMMTUCamDemo  Nncam_Pause success !  hr = " + to_string(static_cast<long long>(hr));
+					CUtils::cameraLog(log);
+	
+				}
+			   
+			
+			}
+
+
 
 			/*
 			wchar_t strPath[MAX_PATH];
@@ -1090,13 +1341,17 @@ int CMMTUCamDemo::StartCapture()
 	memset(&m_header, 0, sizeof(m_header));
 	m_header.biSize = sizeof(BITMAPINFOHEADER);
 	m_header.biPlanes = 1;
-	m_header.biBitCount = 24;
+	m_header.biBitCount = mbiBitCount;
 
     Nncam_put_eSize(g_hcam,0);
 	if (SUCCEEDED(Nncam_get_Size(g_hcam, (int*)&m_header.biWidth, (int*)&m_header.biHeight)))
 	{
 		
 		m_header.biSizeImage = TDIBWIDTHBYTES(m_header.biWidth * m_header.biBitCount) * m_header.biHeight;
+		log = " CMMTUCamDemo  StartCapture!   m_header.biWidth =  " + to_string(static_cast<long long>(m_header.biWidth))
+		   + 	"   m_header.biHeight =   "  + to_string(static_cast<long long>(m_header.biHeight))
+		   + " m_header.biSizeImage =  " + to_string(static_cast<long long>(m_header.biSizeImage));
+        CUtils::cameraLog(log);
 		if (g_pImageData)
 		{
 			free(g_pImageData);
@@ -1116,6 +1371,8 @@ int CMMTUCamDemo::StartCapture()
        Nncam_StartPullModeWithWndMsg(g_hcam, m_hWnd, MSG_CAMEVENT);
 		*/
 
+
+		Nncam_put_Size(g_hcamT,m_header.biWidth,m_header.biHeight);
 		g_hcamT = g_hcam;
 		g_pImageDataT = g_pImageData;
 		HRESULT hr = Nncam_StartPullModeWithCallback(g_hcamT, EventCallback, NULL);
@@ -1159,7 +1416,7 @@ long CMMTUCamDemo::GetImageBufferSize() const
 
     return 0;
 */    
-    string	log = " CMMTUCamDemo  GetImageBufferSize! ";
+    string	log = " CMMTUCamDemo  GetImageBufferSize!  img_.Width() =  " + to_string(static_cast<long long>(img_.Width()));
     CUtils::cameraLog(log);
     return img_.Width() * img_.Height() * GetImageBytesPerPixel();
 }
@@ -1191,7 +1448,7 @@ const unsigned char* CMMTUCamDemo::GetImageBuffer()
 */
 unsigned CMMTUCamDemo::GetImageWidth() const
 {
-   string log = " CMMTUCamDemo  GetImageWidth";
+   string log = " CMMTUCamDemo  GetImageWidth  img_.Width() =  "  + to_string(static_cast<long long>(img_.Width()));
    CUtils::cameraLog(log);
    return img_.Width();
 }
@@ -1210,7 +1467,7 @@ unsigned CMMTUCamDemo::GetImageHeight() const
 
     return 0;
 */
-	string	log = " CMMTUCamDemo  GetImageHeight! ";
+	string	log = " CMMTUCamDemo  GetImageHeight!  img_.Height() =  "    + to_string(static_cast<long long>(img_.Height()));
     CUtils::cameraLog(log);
     return img_.Height();
 }
@@ -1232,7 +1489,7 @@ unsigned CMMTUCamDemo::GetImageBytesPerPixel() const
     return 1;
 */
 
-	string	log = " CMMTUCamDemo  GetImageBytesPerPixel! ";
+	string	log = " CMMTUCamDemo  GetImageBytesPerPixel!   img_.Depth() =  "   + to_string(static_cast<long long>(img_.Depth()));
     CUtils::cameraLog(log);
     return img_.Depth();
 } 
@@ -1253,7 +1510,7 @@ unsigned CMMTUCamDemo::GetBitDepth() const
 
     return 8;
 */
-	string	log = " CMMTUCamDemo  GetBitDepth! ";
+	string	log = " CMMTUCamDemo  GetBitDepth!  bitDepth_ =  "  + to_string(static_cast<long long>(bitDepth_));
     CUtils::cameraLog(log);
     return bitDepth_;
 }
@@ -1424,11 +1681,20 @@ int CMMTUCamDemo::ResizeImageBuffer()
 {
 	string	log = " CMMTUCamDemo  ResizeImageBuffer! ";
     CUtils::cameraLog(log);
-    if (NULL == g_hcam)
+    /*
+	if (NULL == g_hcam)
         return DEVICE_NOT_CONNECTED;
 
     if (NULL == g_pImageData)
         return DEVICE_OUT_OF_MEMORY;
+
+	*/
+
+	int nWidth = 0, nHeight = 0;
+    HRESULT hr = Nncam_get_Size(g_hcam, &nWidth, &nHeight);
+
+	unsigned short ucChannels = TDIBWIDTHBYTES(nWidth * mbiBitCount)/nWidth;
+
 
     char buf[MM::MaxStrLength];
     //int ret = GetProperty(MM::g_Keyword_Binning, buf);
@@ -1452,6 +1718,10 @@ int CMMTUCamDemo::ResizeImageBuffer()
     {
         byteDepth = 2;
     }
+	else if (pixelType.compare(g_PixelType_24bitRGB) == 0)
+    {
+        byteDepth = 3;
+    }
     else if ( pixelType.compare(g_PixelType_32bitRGB) == 0)
     {
         byteDepth = 4;
@@ -1464,15 +1734,22 @@ int CMMTUCamDemo::ResizeImageBuffer()
     {
         byteDepth = 8;
     }
+		
 
-   
-/*
+    log = " CMMTUCamDemo  ResizeImageBuffer!   m_header.biWidth =   "  +  to_string(static_cast<long long>(m_header.biWidth))
+		+ "  m_header.biHeight =   "  +  to_string(static_cast<long long>(m_header.biHeight))
+		+ "   byteDepth = " + to_string(static_cast<long long>(byteDepth))
+		+"   nWidth =  " + to_string(static_cast<long long>(nWidth))
+		+ "  nHeight =  " + to_string(static_cast<long long>(nHeight))
+		+ "   pixelType =  " + pixelType;
+    CUtils::cameraLog(log);
+
 #ifdef _WIN64
-    img_.Resize(valWidth.nValue, valHeight.nValue, (m_frame.ucElemBytes * nChnnels));
+    img_.Resize(nWidth, nHeight, byteDepth);
 #else
-    img_.Resize(valWidth.nValue, valHeight.nValue, (4 == nChnnels ? 4 : (m_frame.ucElemBytes * nChnnels)));
+    img_.Resize(nWidth, nHeight, byteDepth);
 #endif
-*/
+
 
 // #ifdef _WIN64
 //     img_.Resize(valWidth.nValue, valHeight.nValue, (m_frame.ucElemBytes * nChnnels));

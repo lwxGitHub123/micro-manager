@@ -258,6 +258,8 @@ int CDemoCamera4::Initialize()
    // pixel type
    pAct = new CPropertyAction (this, &CDemoCamera4::OnPixelType);
    nRet = CreateStringProperty(MM::g_Keyword_PixelType, g_PixelType_8bit, false, pAct);
+   log = " CDemoCamera4  Initialize   pixel type  nRet = "  + to_string(static_cast<long long>(nRet));
+   CUtils::cameraLog(log);
    assert(nRet == DEVICE_OK);
 
    vector<string> pixelTypeValues;
@@ -451,6 +453,8 @@ int CDemoCamera4::Initialize()
    // setup the buffer
    // ----------------
    nRet = ResizeImageBuffer();
+   log = "CDemoCamera4  ResizeImageBuffer  nRet =  " + to_string(static_cast<long long>(nRet)) ;
+   CUtils::cameraLog(log);
    if (nRet != DEVICE_OK)
       return nRet;
 
@@ -1511,6 +1515,9 @@ int CDemoCamera4::OnPixelType(MM::PropertyBase* pProp, MM::ActionType eAct)
          string pixelType;
          pProp->Get(pixelType);
 
+		 log = " CDemoCamera4  OnPixelType  AfterSet pixelType = "  + pixelType;
+         CUtils::cameraLog(log);
+
          if (pixelType.compare(g_PixelType_8bit) == 0)
          {
             nComponents_ = 1;
@@ -1560,7 +1567,10 @@ int CDemoCamera4::OnPixelType(MM::PropertyBase* pProp, MM::ActionType eAct)
    case MM::BeforeGet:
       {
          long bytesPerPixel = GetImageBytesPerPixel();
-         if (bytesPerPixel == 1)
+         
+		 log = " CDemoCamera4  OnPixelType  BeforeGet bytesPerPixel = "  + to_string(static_cast<long long>(bytesPerPixel));
+         CUtils::cameraLog(log);
+		 if (bytesPerPixel == 1)
          {
          	pProp->Set(g_PixelType_8bit);
          }
@@ -2206,13 +2216,23 @@ int CDemoCamera4::ResizeImageBuffer()
       byteDepth = 8;
 	}
 
+   log = " CDemoCamera4  ResizeImageBuffer   cameraCCDXSize_/binSize_ =  "  + to_string(static_cast<long long>(cameraCCDXSize_/binSize_))
+	   + "   cameraCCDYSize_/binSize_ =  " + to_string(static_cast<long long>(cameraCCDYSize_/binSize_)) + "  byteDepth =  "  +  to_string(static_cast<long long>(byteDepth))
+	   + "  img_.Height() =  " + to_string(static_cast<long long>(img_.Height())) 
+	   + "  img_.Width() =  " + to_string(static_cast<long long>(img_.Width())) 
+	   + "  img_.Depth() = " + to_string(static_cast<long long>(img_.Depth())) ;
+   CUtils::cameraLog(log);
+
    img_.Resize(cameraCCDXSize_/binSize_, cameraCCDYSize_/binSize_, byteDepth);
    return DEVICE_OK;
 }
 
 void CDemoCamera4::GenerateEmptyImage(ImgBuffer& img)
 {
-   string log = " CDemoCamera4  GenerateEmptyImage ";
+  
+   string log = " CDemoCamera4  GenerateEmptyImage   img.Height() = " + to_string(static_cast<long long>(img.Height())) 
+	   + "    img.Width() =  "  +  to_string(static_cast<long long>(img.Width())) 
+	   + "  img.Depth() =  " + to_string(static_cast<long long>(img.Depth()));
    CUtils::cameraLog(log);
    MMThreadGuard g(imgPixelsLock_);
    if (img.Height() == 0 || img.Width() == 0 || img.Depth() == 0)
