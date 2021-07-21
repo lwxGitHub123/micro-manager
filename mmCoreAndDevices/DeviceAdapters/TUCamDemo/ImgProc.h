@@ -41,6 +41,8 @@ public:
 	static Mat Rgb24ToMat(void* g_pImageData,unsigned int height,unsigned int width);
 
 
+	static Mat TransBufferToMat(unsigned char* pBuffer, int nWidth, int nHeight, int nBandNum, int nBPB);
+
 
 };
 

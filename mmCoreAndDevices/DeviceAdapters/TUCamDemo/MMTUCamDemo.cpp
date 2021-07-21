@@ -219,6 +219,9 @@ unsigned snapCount;
 bool m_bPaused = false;
 //snapFlag_ 取值为0表示未进入、1表示进入snap、2表示snap刚结束
 unsigned snapFlag_ ;
+unsigned mbiBitCount ;
+int nBandNum ;
+int nBPB ;
 
 ///////////////////////////////////////////////////////////////////////////////
 // CMMTUCamDemo implementation
@@ -264,11 +267,11 @@ CMMTUCamDemo::CMMTUCamDemo():
     shouldDisplayImageNumber_(false),
     stripeWidth_(1.0),
     nComponents_(1),
-    returnToSoftwareTriggers_(false),
+    returnToSoftwareTriggers_(false)
 	//g_hcam(NULL),
 	//g_pImageData(NULL),
 	//g_total(0),
-	mbiBitCount(24)
+	//mbiBitCount(24)
 {
     memset(testProperty_,0,sizeof(testProperty_));
 
@@ -331,6 +334,10 @@ int CMMTUCamDemo::Initialize()
 	g_total = 0 ;
 	snapFlag_ = 0;
 	snapCount = 0;
+	mbiBitCount = 8;
+    nBandNum = 1;
+    nBPB = 1;
+
 
    string log = " CMMTUCamDemo  Initialize";
    CUtils::cameraLog(log);
@@ -392,8 +399,21 @@ int CMMTUCamDemo::Initialize()
    int nWidth = 0, nHeight = 0;
    Nncam_get_Size(g_hcam, &nWidth, &nHeight);
    unsigned short ucChannels = TDIBWIDTHBYTES(nWidth * mbiBitCount)/nWidth;
+   log = " CMMTUCamDemo  Initialize   ucChannels = "  + to_string(static_cast<long long>(ucChannels));
+   CUtils::cameraLog(log);
 
-   if (3 == ucChannels)
+   if (1 == ucChannels)
+   {
+		nRet = CreateProperty(MM::g_Keyword_PixelType, g_PixelType_8bit, MM::String, false, pAct);
+
+		assert(nRet == DEVICE_OK);
+
+		log = " CMMTUCamDemo  Initialize   pixel type  nRet = "  + to_string(static_cast<long long>(nRet));
+        CUtils::cameraLog(log);
+
+		pixelTypeValues.push_back(g_PixelType_8bit);
+	}
+   else if (3 == ucChannels)
    {
 		nRet = CreateProperty(MM::g_Keyword_PixelType, g_PixelType_24bitRGB, MM::String, false, pAct);
 
@@ -404,6 +424,19 @@ int CMMTUCamDemo::Initialize()
 
 		pixelTypeValues.push_back(g_PixelType_24bitRGB);
 	}
+   else if(4 == ucChannels)
+   {
+    
+	   	nRet = CreateProperty(MM::g_Keyword_PixelType, g_PixelType_32bitRGB, MM::String, false, pAct);
+
+		assert(nRet == DEVICE_OK);
+
+		log = " CMMTUCamDemo  Initialize   pixel type  nRet = "  + to_string(static_cast<long long>(nRet));
+        CUtils::cameraLog(log);
+
+		pixelTypeValues.push_back(g_PixelType_32bitRGB);
+   
+   }
 
    nRet = SetAllowedValues(MM::g_Keyword_PixelType, pixelTypeValues);
   /*
@@ -635,7 +668,7 @@ int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight,int ucChanne
                 }
 				*/
 
-				memcpy((void*)pDst, pSrc, nPix);
+				memcpy(pDst, pSrc, nPix);
 
 #else
                 
@@ -644,6 +677,7 @@ int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight,int ucChanne
 		        unsigned short* pSrc = (unsigned short *)(g_pImageData);
                 unsigned char* pDst  = (unsigned char *)(img.GetPixelsRW());
 
+				/*
                 for (int i=0; i<nPix; ++i) 
                 {
                     *pDst++ = (*pSrc++) >> 8;
@@ -651,6 +685,8 @@ int CMMTUCamDemo::CopyToFrame(ImgBuffer& img,int nWidth,int nHeight,int ucChanne
                     *pDst++ = (*pSrc++) >> 8;
                     *pDst++ = 0;
                 }
+				*/
+				memcpy(pDst, pSrc, nPix);
 #endif
            /*
 			}
@@ -1024,6 +1060,10 @@ int CMMTUCamDemo::OnPixelType(MM::PropertyBase* pProp, MM::ActionType eAct)
 		{
 		    pProp->Set(g_PixelType_24bitRGB);
 		}
+		else if(ucChannels == 4)
+		{
+		   pProp->Set(g_PixelType_32bitRGB);
+		}
 		 
 
          ret = DEVICE_OK;
@@ -1126,7 +1166,11 @@ int CMMTUCamDemo::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
          {
 				bytesPerPixel = 2;
          }
-			else if ( pixelType.compare(g_PixelType_32bitRGB) == 0)
+		    else if ( pixelType.compare(g_PixelType_24bitRGB) == 0)
+			{
+				bytesPerPixel = 3;
+			}
+		    else if ( pixelType.compare(g_PixelType_32bitRGB) == 0)
 			{
 				bytesPerPixel = 4;
 			}
@@ -1231,6 +1275,71 @@ int CMMTUCamDemo::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
     return ret; 
 }
 
+int CMMTUCamDemo::OnDropPixels(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::AfterSet)
+   {
+      long tvalue = 0;
+      pProp->Get(tvalue);
+		dropPixels_ = (0==tvalue)?false:true;
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+      pProp->Set(dropPixels_?1L:0L);
+   }
+
+   return DEVICE_OK;
+}
+
+int CMMTUCamDemo::OnFastImage(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::AfterSet)
+   {
+      long tvalue = 0;
+      pProp->Get(tvalue);
+		fastImage_ = (0==tvalue)?false:true;
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+      pProp->Set(fastImage_?1L:0L);
+   }
+
+   return DEVICE_OK;
+}
+
+int CMMTUCamDemo::OnSaturatePixels(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::AfterSet)
+   {
+      long tvalue = 0;
+      pProp->Get(tvalue);
+		saturatePixels_ = (0==tvalue)?false:true;
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+      pProp->Set(saturatePixels_?1L:0L);
+   }
+
+   return DEVICE_OK;
+}
+
+
+int CMMTUCamDemo::OnFractionOfPixelsToDropOrSaturate(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::AfterSet)
+   {
+      double tvalue = 0;
+      pProp->Get(tvalue);
+		fractionOfPixelsToDropOrSaturate_ = tvalue;
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+      pProp->Set(fractionOfPixelsToDropOrSaturate_);
+   }
+
+   return DEVICE_OK;
+}
+
 bool CMMTUCamDemo::IsCapturing() 
 {
 	 string log = " CMMTUCamDemo  IsCapturing";
@@ -1252,7 +1361,7 @@ static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 			{
 				NncamFrameInfoV2 info = { 0 };
 			   // HRESULT hr = Nncam_PullImageV2(g_hcam, g_pImageDataT, 24, &info);
-				HRESULT hr = Nncam_PullImageV2(g_hcam, g_pImageData, 24, &info);
+				HRESULT hr = Nncam_PullImageV2(g_hcam, g_pImageData, mbiBitCount, &info);
 				if (FAILED(hr))
 				{
 					printf("failed to pull image, hr = %08x\n", hr);
@@ -1276,7 +1385,9 @@ static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 				
 					string imgPath = "H:/projects1/testImg/"  +imgName;
 					CUtils::cameraLog("imgPath =  "+ imgPath);
-			        Mat img = CImgProc::Rgb24ToMat(g_pImageData,info.height,info.width);
+			        //Mat img = CImgProc::Rgb24ToMat(g_pImageData,info.height,info.width);
+					Mat img = CImgProc::TransBufferToMat((unsigned char*)g_pImageData,info.width,info.height,nBandNum,nBPB);
+					
 					//imshow("img",img);
 					imwrite(imgPath,img);
 					//waitKey(1);
@@ -1297,7 +1408,7 @@ static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 		
 			NncamFrameInfoV2 info = { 0 };
 		   // HRESULT hr = Nncam_PullImageV2(g_hcam, g_pImageDataT, 24, &info);
-			HRESULT hr = Nncam_PullImageV2(g_hcam, g_pImageData, 24, &info);
+			HRESULT hr = Nncam_PullImageV2(g_hcam, g_pImageData, mbiBitCount, &info);
 			if (FAILED(hr))
 			{
 				printf("failed to pull image, hr = %08x\n", hr);
@@ -1738,14 +1849,49 @@ int CMMTUCamDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
             return DEVICE_NOT_CONNECTED;
 
         m_bLiving = false;
-        Nncam_Stop(g_hcam);      // Stop capture   
-        ReleaseBuffer();
+        HRESULT hr = Nncam_Stop(g_hcam);      // Stop capture   
+        if(FAILED(hr))
+		{
+		  log = " CMMTUCamDemo  SetROI!  Nncam_Stop failed ";
+          CUtils::cameraLog(log);
+		
+		}
+		else
+		{
+		  log = " CMMTUCamDemo  SetROI!  Nncam_Stop success ";
+          CUtils::cameraLog(log);
+		
+		}
 
-        Nncam_put_Roi(g_hcam,  x,  y,  xSize,  ySize);
-        Nncam_get_Roi(g_hcam,  &x,  &y,  &xSize,  &ySize);
+		ReleaseBuffer();
+
+        hr = Nncam_put_Roi(g_hcam,  x,  y,  xSize,  ySize);
+        if(FAILED(hr))
+		{
+		  log = " CMMTUCamDemo  SetROI!  Nncam_put_Roi failed ";
+          CUtils::cameraLog(log);
+		}
+		else
+		{
+		
+		  log = " CMMTUCamDemo  SetROI!  Nncam_put_Roi success ";
+          CUtils::cameraLog(log);
+		}
+		 hr = Nncam_get_Roi(g_hcam,  &x,  &y,  &xSize,  &ySize);
+		if(FAILED(hr))
+		{
+		  log = " CMMTUCamDemo  SetROI!  Nncam_get_Roi failed ";
+          CUtils::cameraLog(log);
+		}
+		else
+		{
+		
+		  log = " CMMTUCamDemo  SetROI!  Nncam_get_Roi success ";
+          CUtils::cameraLog(log);
+		}
 
 
-		string log = " CMMTUCamDemo  SetROI x = " + to_string(static_cast<long long>(x)) + "  y =   " + to_string(static_cast<long long>(y))
+		log = " CMMTUCamDemo  SetROI x = " + to_string(static_cast<long long>(x)) + "  y =   " + to_string(static_cast<long long>(y))
 			+ "   xsize =  " + to_string(static_cast<long long>(xSize))  + "   ysize = " + to_string(static_cast<long long>(ySize));
         CUtils::cameraLog(log);
 
@@ -1759,9 +1905,32 @@ int CMMTUCamDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)
 
 		Sleep(2);
 		unsigned dblExp=0;
-		Nncam_get_ExpoTime(g_hcam,&dblExp);
-		Nncam_put_ExpoTime(g_hcam,  dblExp);
+		hr = Nncam_get_ExpoTime(g_hcam,&dblExp);
+		if(FAILED(hr))
+		{
+		  log = " CMMTUCamDemo  SetROI!  Nncam_get_ExpoTime failed ";
+          CUtils::cameraLog(log);
+		}
+		else
+		{
 		
+		  log = " CMMTUCamDemo  SetROI!  Nncam_get_ExpoTime success ";
+          CUtils::cameraLog(log);
+		}
+
+		hr = Nncam_put_ExpoTime(g_hcam,  dblExp);
+		if(FAILED(hr))
+		{
+		  log = " CMMTUCamDemo  SetROI!  Nncam_put_ExpoTime failed ";
+          CUtils::cameraLog(log);
+		}
+		else
+		{
+		
+		  log = " CMMTUCamDemo  SetROI!  Nncam_put_ExpoTime success ";
+          CUtils::cameraLog(log);
+		}
+
     }
 
     return DEVICE_OK;
@@ -1797,8 +1966,20 @@ int CMMTUCamDemo::ClearROI()
         return DEVICE_NOT_CONNECTED;
 
     m_bLiving = false;
-    Nncam_Stop(g_hcam);      // Stop capture   
-    ReleaseBuffer();
+    HRESULT hr = Nncam_Stop(g_hcam);      // Stop capture   
+    if(FAILED(hr))
+	{
+		log = " CMMTUCamDemo  ClearROI!  Nncam_Stop failed ";
+        CUtils::cameraLog(log);
+	}
+	else
+	{
+		
+		log = " CMMTUCamDemo  ClearROI!  Nncam_Stop success ";
+        CUtils::cameraLog(log);
+	}
+	
+	ReleaseBuffer();
 
     roiX_ = 0;
     roiY_ = 0;

@@ -355,7 +355,7 @@ private:
 	TUCAM_TRGOUT_ATTR  m_tgrOutAttr;        // The output trigger parameters
 	TUCAM_TRGOUTPUT    m_tgrOutPara;        // The output trigger parameter port
 	*/
-	unsigned short   mbiBitCount ;
+	//unsigned short   mbiBitCount ;
 };
 
 

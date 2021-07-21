@@ -53,4 +53,76 @@ Mat CImgProc::Rgb24ToMat(void* g_pImageData,unsigned int height,unsigned int wid
 
 
 
+//************************************
+// Method:    TransBufferToMat
+// FullName:  图片buffer数据转换成 Mat数据格式;
+// Access:    public 
+// Returns:   cv::Mat
+// Qualifier:
+// Parameter: unsigned char * pBuffer  图片数据内容
+// Parameter: int nWidth	图片的宽度
+// Parameter: int nHeight  图片的高度
+// Parameter: int nBandNum 每个像素包含数据个数 (1, 3, 4 ) 1:Gray 3:RGB 4:RGBA
+// Parameter: int nBPB  每个像素数据 所占位数(1, 2) 1:8位  2:16位;
+//************************************
+Mat CImgProc::TransBufferToMat(unsigned char* pBuffer, int nWidth, int nHeight, int nBandNum, int nBPB )
+{
+	cv::Mat mDst;
+	if (nBandNum == 4)
+	{
+		if (nBPB == 1)
+		{
+			mDst = cv::Mat::zeros(cv::Size(nWidth, nHeight), CV_8UC4);
+		}
+		else if (nBPB == 2)
+		{
+			mDst = cv::Mat::zeros(cv::Size(nWidth, nHeight), CV_16UC4);
+		}
+	}
+	else if (nBandNum == 3)
+	{
+		if (nBPB == 1)
+		{
+			mDst = cv::Mat::zeros(cv::Size(nWidth, nHeight), CV_8UC3);
+		}
+		else if (nBPB == 2)
+		{
+			mDst = cv::Mat::zeros(cv::Size(nWidth, nHeight), CV_16UC3);
+		}
+	}
+	else if (nBandNum == 1)
+	{
+		if (nBPB == 1)
+		{
+			mDst = cv::Mat::zeros(cv::Size(nWidth, nHeight), CV_8UC1);
+		}
+		else if (nBPB == 2)
+		{
+			mDst = cv::Mat::zeros(cv::Size(nWidth, nHeight), CV_16UC1);
+		}
+	}
+
+	for (int j = 0; j < nHeight; ++j)
+	{
+		unsigned char* data = mDst.ptr<unsigned char>(j);
+		unsigned char* pSubBuffer = pBuffer + (nHeight - 1 - j) * nWidth* nBandNum*nBPB;
+		memcpy(data, pSubBuffer, nWidth*nBandNum*nBPB);
+	}
+	if (nBandNum == 1)
+	{
+		cv::cvtColor(mDst, mDst, COLOR_GRAY2BGR);
+	}
+	else if (nBandNum == 3)
+	{
+		cv::cvtColor(mDst, mDst, COLOR_RGB2BGR);
+	}
+	else if (nBandNum == 4)
+	{
+		cv::cvtColor(mDst, mDst, COLOR_RGBA2BGR);
+	}
+
+	return mDst;
+}
+
+
 
