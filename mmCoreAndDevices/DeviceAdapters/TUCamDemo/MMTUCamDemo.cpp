@@ -563,6 +563,7 @@ int CMMTUCamDemo::SnapImage()
    static int callCounter = 0;
    ++callCounter;
    snapFlag_ = 1 ;
+   g_total = 0;
 
    MM::MMTime startTime = GetCurrentMMTime();
     
@@ -854,6 +855,7 @@ int CMMTUCamDemo::StopSequenceAcquisition()
         return DEVICE_OK;
 
     m_bLiving = false;
+	snapFlag_ = 2 ;
 
     if (NULL == g_hcam)
     {
@@ -1350,7 +1352,8 @@ bool CMMTUCamDemo::IsCapturing()
 static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 {
     
-	 string log = " CMMTUCamDemo  EventCallback";
+	 string log = " CMMTUCamDemo  Enter EventCallback  snapFlag_ =  " + to_string(static_cast<long long>(snapFlag_))
+		 + "   g_total =  " + to_string(static_cast<long long>(g_total));
      CUtils::cameraLog(log);
 	if (NNCAM_EVENT_IMAGE == nEvent)
     {
@@ -1431,8 +1434,9 @@ static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 				
 				string imgPath = "H:/projects1/testImg/" + imgName;
 				CUtils::cameraLog("imgPath =  "+ imgPath);
-				Mat img = CImgProc::Rgb24ToMat(g_pImageData,info.height,info.width);
-			    //imshow("img",img);
+				//Mat img = CImgProc::Rgb24ToMat(g_pImageData,info.height,info.width);
+			    Mat img = CImgProc::TransBufferToMat((unsigned char*)g_pImageData,info.width,info.height,nBandNum,nBPB);
+				//imshow("img",img);
 				imwrite(imgPath,img);
 				//waitKey(1);	
 
@@ -1531,7 +1535,7 @@ int CMMTUCamDemo::StartCapture()
 		    string log = " CMMTUCamDemo  StartCapture failed to start camera  snapFlag_ = " + to_string(static_cast<long long>(snapFlag_));
             CUtils::cameraLog(log);
 			printf("failed to start camera, hr = %08x\n", hr);
-			if (snapFlag_ == 1)
+			if (snapFlag_ == 2 || 0 == snapFlag_ || 1 == snapFlag_)
 			{
 			  RestartCapture();
 			}
@@ -2108,6 +2112,7 @@ int CMMTUCamDemo::StartSequenceAcquisition(long numImages, double interval_ms, b
 		+ " m_bLiving =  " + to_string(static_cast<long long>(m_bLiving));
     CUtils::cameraLog(log);
 
+	snapFlag_ = 0 ;
     if (IsCapturing())
         return DEVICE_CAMERA_BUSY_ACQUIRING;
 
