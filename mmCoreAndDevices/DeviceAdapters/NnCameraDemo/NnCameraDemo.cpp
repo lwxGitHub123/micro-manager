@@ -482,6 +482,14 @@ int CNnCameraDemo::Initialize()
    assert(nRet == DEVICE_OK);
 
 
+    // Image format
+    pAct = new CPropertyAction (this, &CNnCameraDemo::OnImageFormat);
+	nRet = CreateStringProperty(g_PropNameIFMT, "RAW", false, pAct);
+	assert(nRet == DEVICE_OK);
+
+	AddAllowedValue(g_PropNameIFMT, g_Format_RAW);
+
+
      // synchronize all properties
     // --------------------------
     nRet = UpdateStatus();
@@ -887,6 +895,105 @@ int CNnCameraDemo::StopSequenceAcquisition()
 } 
 
 
+
+/*
+* Handles "IamgeFormat" property.
+*/
+int CNnCameraDemo::OnImageFormat(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+    
+
+    string	log = " CNnCameraDemo  OnImageFormat!";
+    CUtils::cameraLog(log);
+    int ret = DEVICE_ERR;
+    switch(eAct)
+    {
+    case MM::AfterSet:
+        {
+            string val;
+            pProp->Get(val);
+
+            if (val.length() != 0)
+            {
+                if (0 == val.compare(g_Format_RAW))
+                {
+
+                }  
+
+                char szPath[MAX_PATH];
+                GetCurrentDirectory(MAX_PATH, szPath);
+                strcat(szPath, g_FileName);
+
+                //OutputDebugString(szPath);
+
+                // Create not exists folder
+                //if (!PathIsDirectory(szPath))
+                    
+				CreateDirectory(szPath, NULL);
+
+				string szPath1 =  szPath ;
+				log = " CNnCameraDemo  OnImageFormat!  szPath =  " + szPath1;
+                CUtils::cameraLog(log);
+
+                SYSTEMTIME sysTm;
+                GetLocalTime(&sysTm);
+                sprintf(m_szImgPath, ("%s\\MM_%02d%02d%02d%02d%03d"), szPath, sysTm.wDay, sysTm.wHour, sysTm.wMinute, sysTm.wSecond, sysTm.wMilliseconds);
+
+                m_bSaving = true;
+
+                //OutputDebugString(m_szImgPath);
+            }
+
+            ret = DEVICE_OK;
+        }
+        break;
+    case MM::BeforeGet:
+        {
+            pProp->Set(g_Format_RAW);
+
+            ret = DEVICE_OK;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return ret;
+}
+
+
+bool CNnCameraDemo::SaveRaw(char *pfileName, unsigned char *pData, unsigned long ulSize)
+{
+    FILE *pfile = NULL;
+    string szPath = pfileName;
+    szPath += ".raw";
+
+    //OutputDebugString(szPath.c_str());
+
+	string	log = " CNnCameraDemo  SaveRaw!   szPath =  " + szPath;
+    CUtils::cameraLog(log);
+
+    pfile = fopen(szPath.c_str(), "wb");
+
+    if(NULL != pfile) 
+    {
+        fwrite(pData, 1, ulSize, pfile);
+        fclose(pfile);
+
+//        delete pfile;
+
+        pfile = NULL;
+        //OutputDebugString("[SaveRaw]:NULL!\n");
+		log = " CNnCameraDemo  SaveRaw  NULL! " ;
+        CUtils::cameraLog(log);
+
+
+        return true;
+    }
+
+    return false;
+}
+
 /*
 * Handles "Exposure" property.
 */
@@ -911,19 +1018,48 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
                dblExp = exposureMaximum_;
             }
 			unsigned dblExp1 = dblExp;
-            Nncam_get_ExpoTime(g_hcam,&dblExp1);
+            //HRESULT hr = Nncam_get_ExpoTime(g_hcam,&dblExp1);
+			HRESULT hr = Nncam_put_ExpoTime(g_hcam,dblExp);
+			if (FAILED(hr))
+	        {
+		
+	      	   log = "CNnCameraDemo OnExposure!  Nncam_get_ExpoTime failed .";
+	           CUtils::cameraLog(log);
+            }
+           else
+          {
+			 log = " CNnCameraDemo  OnExposure!  Nncam_get_ExpoTime success !  dblExp =  "+  to_string(static_cast<long long>(dblExp));
+             CUtils::cameraLog(log);
+			
+			}
+
 
             ret = DEVICE_OK;
         }
         break;
     case MM::BeforeGet:
         {
-            double dblExp = 10.0f;
+            double dblExp = 0.0f;
 			unsigned dblExp1 = dblExp;
 
-            //Nncam_get_ExpoTime(g_hcam,&dblExp1);
-			Nncam_put_ExpoTime(g_hcam,dblExp);
-            pProp->Set(dblExp);
+            HRESULT hr = Nncam_get_ExpoTime(g_hcam,&dblExp1);
+			//HRESULT hr = Nncam_put_ExpoTime(g_hcam,dblExp);
+            dblExp = dblExp1 ;
+			pProp->Set(dblExp);
+			if (FAILED(hr))
+	        {
+		
+	      	   log = "CNnCameraDemo OnExposure!  Nncam_put_ExpoTime failed .";
+	           CUtils::cameraLog(log);
+            }
+           else
+          {
+			 log = " CNnCameraDemo  OnExposure!  Nncam_put_ExpoTime success !  dblExp1 =  "+  to_string(static_cast<long long>(dblExp1));
+             CUtils::cameraLog(log);
+			
+			}
+
+
 
             ret = DEVICE_OK;
         }
