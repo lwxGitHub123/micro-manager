@@ -341,6 +341,8 @@ private:
 	HANDLE          m_hThdWaitEvt;          // The waiting frame thread event handle
     HANDLE          m_hThdTempEvt;          // To get the value of temperature event handle
 
+	float           maxGain;                //最大增益值
+	float           minGain;                //最小增益值
 
 	//static HNncam g_hcam ;
 	//void* g_pImageData;

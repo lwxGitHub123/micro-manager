@@ -239,8 +239,10 @@ int nBPB ;
 */
 CNnCameraDemo::CNnCameraDemo():
     CCameraBase<CNnCameraDemo> (),
-	exposureMaximum_(10000.0), 
-    exposureMinimum_(0.0),
+	exposureMaximum_(200000.0), 
+    exposureMinimum_(244.0),
+	maxGain(5000.0),
+	minGain(100.0),
     dPhase_(0),
     initialized_(false),
     readoutUs_(0.0),
@@ -481,6 +483,12 @@ int CNnCameraDemo::Initialize()
    nRet = CreateProperty(MM::g_Keyword_Exposure, "10.0", MM::Float, false, pAct);
    assert(nRet == DEVICE_OK);
 
+   pAct = new CPropertyAction (this, &CNnCameraDemo::OnGlobalGain);
+   nRet = CreateProperty(g_PropNameGain, "1", MM::Integer, false, pAct);
+   assert(nRet == DEVICE_OK);
+
+   SetPropertyLimits(g_PropNameGain, minGain, maxGain);
+
 
     // Image format
     pAct = new CPropertyAction (this, &CNnCameraDemo::OnImageFormat);
@@ -581,7 +589,7 @@ int CNnCameraDemo::SnapImage()
 		// Change the exposure time
         exp = GetSequenceExposure();
         Nncam_put_ExpoTime(g_hcam, exp);
-		log = " CNnCameraDemo  SnapImage  Get Exp = " +  to_string(static_cast<long long>(exp));
+		log = " CNnCameraDemo  SnapImage  Nncam_put_ExpoTime Exp = " +  to_string(static_cast<long long>(exp));
         CUtils::cameraLog(log);
     }
 
@@ -1023,12 +1031,13 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 			if (FAILED(hr))
 	        {
 		
-	      	   log = "CNnCameraDemo OnExposure!  Nncam_get_ExpoTime failed .";
+	      	   log = "CNnCameraDemo OnExposure!  Nncam_put_ExpoTime failed .";
 	           CUtils::cameraLog(log);
             }
            else
           {
-			 log = " CNnCameraDemo  OnExposure!  Nncam_get_ExpoTime success !  dblExp =  "+  to_string(static_cast<long long>(dblExp));
+			 log = " CNnCameraDemo  OnExposure!  Nncam_put_ExpoTime success !  dblExp =  "+  to_string(static_cast<long long>(dblExp))
+				 + "  exposureMinimum_ =  " + to_string(static_cast<long long>(exposureMinimum_)) + "  exposureMaximum_ =  " + to_string(static_cast<long long>(exposureMaximum_));
              CUtils::cameraLog(log);
 			
 			}
@@ -1042,6 +1051,8 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
             double dblExp = 0.0f;
 			unsigned dblExp1 = dblExp;
 
+			log = " CNnCameraDemo  OnExposure!  Nncam_get_ExpoTime success ! BeforeGet dblExp1 =  "+  to_string(static_cast<long long>(dblExp1));
+            CUtils::cameraLog(log);
             HRESULT hr = Nncam_get_ExpoTime(g_hcam,&dblExp1);
 			//HRESULT hr = Nncam_put_ExpoTime(g_hcam,dblExp);
             dblExp = dblExp1 ;
@@ -1049,12 +1060,12 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 			if (FAILED(hr))
 	        {
 		
-	      	   log = "CNnCameraDemo OnExposure!  Nncam_put_ExpoTime failed .";
+	      	   log = "CNnCameraDemo OnExposure!  Nncam_get_ExpoTime failed .";
 	           CUtils::cameraLog(log);
             }
            else
           {
-			 log = " CNnCameraDemo  OnExposure!  Nncam_put_ExpoTime success !  dblExp1 =  "+  to_string(static_cast<long long>(dblExp1));
+			 log = " CNnCameraDemo  OnExposure!  Nncam_get_ExpoTime success !  dblExp1 =  "+  to_string(static_cast<long long>(dblExp1));
              CUtils::cameraLog(log);
 			
 			}
@@ -1074,6 +1085,73 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
     return ret;
 }
 
+
+/*
+* Handles "GlobalGain" property.
+*/
+int CNnCameraDemo::OnGlobalGain(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+	string 	log = " CNnCameraDemo  OnGlobalGain! ";
+    CUtils::cameraLog(log);
+
+    int ret = DEVICE_ERR;
+    switch(eAct)
+    {
+    case MM::AfterSet:
+        {
+            double dblGain;
+            pProp->Get(dblGain);          
+
+			log = " CNnCameraDemo  OnGlobalGain! Before  Nncam_put_ExpoAGain !  dblGain =  "+  to_string(static_cast<long long>(dblGain));
+            CUtils::cameraLog(log);
+            HRESULT hr = Nncam_put_ExpoAGain(g_hcam,  dblGain);
+			if (FAILED(hr))
+	        {
+		
+	      	   log = "CNnCameraDemo OnGlobalGain!  Nncam_put_ExpoAGain failed .";
+	           CUtils::cameraLog(log);
+            }
+           else
+           {
+			 log = " CNnCameraDemo  OnGlobalGain!  Nncam_put_ExpoAGain success !  dblGain =  "+  to_string(static_cast<long long>(dblGain));
+             CUtils::cameraLog(log);
+			
+			}
+
+            ret = DEVICE_OK;
+        }
+        break;
+    case MM::BeforeGet:
+        {
+            double dblGain = 0.0f;
+			unsigned short dblGain1 = 0;
+
+            HRESULT hr =  Nncam_get_ExpoAGain(g_hcam,  &dblGain1);
+			if (FAILED(hr))
+	        {
+		
+	      	   log = "CNnCameraDemo OnGlobalGain!  Nncam_get_ExpoAGain failed .";
+	           CUtils::cameraLog(log);
+            }
+           else
+           {
+			 log = " CNnCameraDemo  OnGlobalGain!  Nncam_get_ExpoAGain success !  dblGain1 =  "+  to_string(static_cast<long long>(dblGain1));
+             CUtils::cameraLog(log);
+			
+			}
+
+            dblGain =  (double)dblGain1 ;
+			pProp->Set(dblGain);
+
+            ret = DEVICE_OK;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return ret;
+}
 
 /**
 * Handles "PixelType" property.
@@ -1940,7 +2018,7 @@ int CNnCameraDemo::SetBinning(int binF)
 void CNnCameraDemo::SetExposure(double exp)
 {
 
-	string	log = " CNnCameraDemo  SetExposure! ";
+	string	log = " CNnCameraDemo  SetExposure!   exp =  " + to_string(static_cast<long long>(exp));
     CUtils::cameraLog(log);
     if (exp < exposureMinimum_)
     {
@@ -2054,7 +2132,7 @@ int CNnCameraDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize
 		else
 		{
 		
-		  log = " CNnCameraDemo  SetROI!  Nncam_get_ExpoTime success ";
+		  log = " CNnCameraDemo  SetROI!  Nncam_get_ExpoTime success  dblExp =  " + to_string(static_cast<long long>(dblExp));
           CUtils::cameraLog(log);
 		}
 
@@ -2067,7 +2145,7 @@ int CNnCameraDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize
 		else
 		{
 		
-		  log = " CNnCameraDemo  SetROI!  Nncam_put_ExpoTime success ";
+		  log = " CNnCameraDemo  SetROI!  Nncam_put_ExpoTime success   dblExp =  " +  to_string(static_cast<long long>(dblExp));
           CUtils::cameraLog(log);
 		}
 
