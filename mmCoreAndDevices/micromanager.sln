@@ -494,6 +494,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DemoCamera4", "DeviceAdapte
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TUCamDemo", "DeviceAdapters\TUCamDemo\TUCamDemo.vcxproj", "{BCD92E7C-BBC8-4BF9-9115-F3B29E8C3C2B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NnCameraDemo", "DeviceAdapters\NnCameraDemo\NnCameraDemo.vcxproj", "{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -3399,6 +3401,17 @@ Global
 		{BCD92E7C-BBC8-4BF9-9115-F3B29E8C3C2B}.Release|Win32.ActiveCfg = Release|Win32
 		{BCD92E7C-BBC8-4BF9-9115-F3B29E8C3C2B}.Release|Win32.Build.0 = Release|Win32
 		{BCD92E7C-BBC8-4BF9-9115-F3B29E8C3C2B}.Release|x64.ActiveCfg = Release|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Debug|Win32.Build.0 = Debug|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Debug|x64.ActiveCfg = Debug|x64
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Debug|x64.Build.0 = Debug|x64
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Release|Win32.ActiveCfg = Release|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Release|Win32.Build.0 = Release|Win32
+		{7BF4DB5B-DFD4-4F64-8EFB-D8A88A69607F}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
