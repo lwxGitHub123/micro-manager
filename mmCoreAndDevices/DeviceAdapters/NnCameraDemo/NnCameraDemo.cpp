@@ -1817,7 +1817,24 @@ int CNnCameraDemo::StartCapture()
 	m_header.biPlanes = 1;
 	m_header.biBitCount = mbiBitCount;
 
-    Nncam_put_eSize(g_hcam,binVal);
+	int nWidth = 0, nHeight = 0;
+    HRESULT hr = Nncam_get_Size(g_hcam, &nWidth, &nHeight);
+	if (binVal > 0)
+	{
+		if(binVal == 1)
+		{
+			Nncam_put_eSize(g_hcam,0);
+		}
+		else
+		{
+		     nWidth = nWidth / binVal ;
+	         nHeight = nHeight / binVal ;
+	         Nncam_put_Size(g_hcam,nWidth,nHeight);
+		}
+
+	}
+	
+    //Nncam_put_eSize(g_hcam,binVal);
 	if (SUCCEEDED(Nncam_get_Size(g_hcam, (int*)&m_header.biWidth, (int*)&m_header.biHeight)))
 	{
 		
@@ -1917,7 +1934,23 @@ int CNnCameraDemo::RestartCapture()
 	m_header.biPlanes = 1;
 	m_header.biBitCount = mbiBitCount;
 
-    Nncam_put_eSize(g_hcam,binVal);
+
+	int nWidth = 0, nHeight = 0;
+    HRESULT hr = Nncam_get_Size(g_hcam, &nWidth, &nHeight);
+	if (binVal > 0)
+	{
+		if(binVal == 1)
+		{
+		  Nncam_put_eSize(g_hcam,0);
+		}
+		else
+		{
+		    nWidth = nWidth / binVal ;
+	        nHeight = nHeight / binVal ;
+	        Nncam_put_Size(g_hcam,nWidth,nHeight);
+		}
+	}
+    //Nncam_put_eSize(g_hcam,binVal);
 	if (SUCCEEDED(Nncam_get_Size(g_hcam, (int*)&m_header.biWidth, (int*)&m_header.biHeight)))
 	{
 		
@@ -2382,12 +2415,16 @@ int CNnCameraDemo::ResizeImageBuffer()
 		+ "   pixelType =  " + pixelType;
     CUtils::cameraLog(log);
 
-#ifdef _WIN64
-    img_.Resize(m_header.biWidth, m_header.biHeight, byteDepth);
-#else
-    img_.Resize(m_header.biWidth, m_header.biHeight, byteDepth);
-#endif
 
+	if(m_header.biWidth > 0 && m_header.biHeight > 0)
+	{
+	  img_.Resize(m_header.biWidth, m_header.biHeight, byteDepth);
+	}
+	else
+	{
+	 img_.Resize(nWidth, nHeight, byteDepth);	
+	}
+    
 
 // #ifdef _WIN64
 //     img_.Resize(valWidth.nValue, valHeight.nValue, (m_frame.ucElemBytes * nChnnels));
@@ -2634,10 +2671,17 @@ int CNnCameraDemo::SetAllowedBinning()
         return DEVICE_NOT_CONNECTED;
 
     vector<string> binValues;
-	binValues.push_back("0");
+	//binValues.push_back("0");
 	binValues.push_back("1");
 	binValues.push_back("2");
 	binValues.push_back("3");
+	binValues.push_back("4");
+	binValues.push_back("5");
+	binValues.push_back("6");
+	binValues.push_back("7");
+	binValues.push_back("8");
+
+	/*
 	if (scanMode_ < 3)
 		binValues.push_back("4");
 	if (scanMode_ < 2)
@@ -2649,6 +2693,7 @@ int CNnCameraDemo::SetAllowedBinning()
 	} else if (binSize_ == 4 && scanMode_ == 3) {
 		SetProperty(MM::g_Keyword_Binning, "2");
 	}
+	*/
 
     LogMessage("Setting allowed binning settings", true);
     return SetAllowedValues(MM::g_Keyword_Binning, binValues);
