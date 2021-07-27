@@ -217,7 +217,7 @@ unsigned snapCount;
 
 
 bool m_bPaused = false;
-//snapFlag_ 取值为0表示未进入、1表示进入snap、2表示snap刚结束
+//snapFlag_ 取值为0表示未进入、1表示进入snap、2表示snap刚结束、3表示进入live、4表示离开live
 unsigned snapFlag_ ;
 unsigned mbiBitCount ;
 int nBandNum ;
@@ -243,6 +243,7 @@ CNnCameraDemo::CNnCameraDemo():
     exposureMinimum_(1),
 	maxGain(5000.0),
 	minGain(100.0),
+	binVal(1),
     dPhase_(0),
     initialized_(false),
     readoutUs_(0.0),
@@ -890,7 +891,7 @@ int CNnCameraDemo::StopSequenceAcquisition()
         return DEVICE_OK;
 
     m_bLiving = false;
-	snapFlag_ = 2 ;
+	snapFlag_ = 4 ;
 
     if (NULL == g_hcam)
     {
@@ -1551,11 +1552,11 @@ int CNnCameraDemo::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
                     
 					if(SUCCEEDED(Nncam_Stop(g_hcam)))      // Stop capture   
 					{
-						log = " CNnCameraDemo  OnBinning  Nncam_Stop success.";
+						log = " CNnCameraDemo  OnBinning  Nncam_Stop success.  val  =  " + val;
                         CUtils::cameraLog(log);
 						ReleaseBuffer();
 
-                  
+                        binVal = atoi(val.c_str()) ;
                 		exposureMinimum_ = 10000;
 						exposureMaximum_ = 3600000;
 						SetPropertyLimits(MM::g_Keyword_Exposure, exposureMinimum_, exposureMaximum_);
@@ -1727,7 +1728,7 @@ static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 				}
 			}
 	   }
-	  else if(snapFlag_ == 0)
+	  else if(snapFlag_ == 3)
 	  {
 		
 			NncamFrameInfoV2 info = { 0 };
@@ -1816,14 +1817,14 @@ int CNnCameraDemo::StartCapture()
 	m_header.biPlanes = 1;
 	m_header.biBitCount = mbiBitCount;
 
-    Nncam_put_eSize(g_hcam,0);
+    Nncam_put_eSize(g_hcam,binVal);
 	if (SUCCEEDED(Nncam_get_Size(g_hcam, (int*)&m_header.biWidth, (int*)&m_header.biHeight)))
 	{
 		
 		m_header.biSizeImage = TDIBWIDTHBYTES(m_header.biWidth * m_header.biBitCount) * m_header.biHeight;
 		log = " CNnCameraDemo  StartCapture!   m_header.biWidth =  " + to_string(static_cast<long long>(m_header.biWidth))
 		   + 	"   m_header.biHeight =   "  + to_string(static_cast<long long>(m_header.biHeight))
-		   + " m_header.biSizeImage =  " + to_string(static_cast<long long>(m_header.biSizeImage));
+		   + " m_header.biSizeImage =  " + to_string(static_cast<long long>(m_header.biSizeImage))+ "   binVal =   " + to_string(static_cast<long long>(binVal));
         CUtils::cameraLog(log);
 		if (g_pImageData)
 		{
@@ -1856,7 +1857,7 @@ int CNnCameraDemo::StartCapture()
 		    string log = " CNnCameraDemo  StartCapture failed to start camera  snapFlag_ = " + to_string(static_cast<long long>(snapFlag_));
             CUtils::cameraLog(log);
 			printf("failed to start camera, hr = %08x\n", hr);
-			if (snapFlag_ == 2 || 0 == snapFlag_ || 1 == snapFlag_)
+			if (snapFlag_ == 2 || 0 == snapFlag_ || 1 == snapFlag_ || 3 == snapFlag_ || 4 == snapFlag_)
 			{
 			  RestartCapture();
 			}
@@ -1916,14 +1917,14 @@ int CNnCameraDemo::RestartCapture()
 	m_header.biPlanes = 1;
 	m_header.biBitCount = mbiBitCount;
 
-    Nncam_put_eSize(g_hcam,0);
+    Nncam_put_eSize(g_hcam,binVal);
 	if (SUCCEEDED(Nncam_get_Size(g_hcam, (int*)&m_header.biWidth, (int*)&m_header.biHeight)))
 	{
 		
 		m_header.biSizeImage = TDIBWIDTHBYTES(m_header.biWidth * m_header.biBitCount) * m_header.biHeight;
 		log = " CNnCameraDemo  RestartCapture!   m_header.biWidth =  " + to_string(static_cast<long long>(m_header.biWidth))
 		   + 	"   m_header.biHeight =   "  + to_string(static_cast<long long>(m_header.biHeight))
-		   + " m_header.biSizeImage =  " + to_string(static_cast<long long>(m_header.biSizeImage));
+		   + " m_header.biSizeImage =  " + to_string(static_cast<long long>(m_header.biSizeImage)) + "   binVal =   " + to_string(static_cast<long long>(binVal));
         CUtils::cameraLog(log);
 		if (g_pImageData)
 		{
@@ -1939,19 +1940,9 @@ int CNnCameraDemo::RestartCapture()
 		}
 		
 		// Start capture
-	 /*
-		HWND  m_hWnd = FindWindow(L"Start capture", 0);
-       Nncam_StartPullModeWithWndMsg(g_hcam, m_hWnd, MSG_CAMEVENT);
-		*/
-
-/*
-		Nncam_put_Size(g_hcamT,m_header.biWidth,m_header.biHeight);
-		g_hcamT = g_hcam;
-		*/
+	 
 		Nncam_put_Size(g_hcam,m_header.biWidth,m_header.biHeight);
-		//g_hcamT = g_hcam;
-		//g_pImageDataT = g_pImageData;
-		//HRESULT hr = Nncam_StartPullModeWithCallback(g_hcamT, EventCallback, NULL);
+		
 		HRESULT hr = Nncam_StartPullModeWithCallback(g_hcam, EventCallback, NULL);
         if (FAILED(hr))
 		{
@@ -2392,9 +2383,9 @@ int CNnCameraDemo::ResizeImageBuffer()
     CUtils::cameraLog(log);
 
 #ifdef _WIN64
-    img_.Resize(nWidth, nHeight, byteDepth);
+    img_.Resize(m_header.biWidth, m_header.biHeight, byteDepth);
 #else
-    img_.Resize(nWidth, nHeight, byteDepth);
+    img_.Resize(m_header.biWidth, m_header.biHeight, byteDepth);
 #endif
 
 
@@ -2434,7 +2425,7 @@ int CNnCameraDemo::StartSequenceAcquisition(long numImages, double interval_ms, 
 		+ " m_bLiving =  " + to_string(static_cast<long long>(m_bLiving));
     CUtils::cameraLog(log);
 
-	snapFlag_ = 0 ;
+	snapFlag_ = 3 ;
     if (IsCapturing())
         return DEVICE_CAMERA_BUSY_ACQUIRING;
 
@@ -2643,8 +2634,10 @@ int CNnCameraDemo::SetAllowedBinning()
         return DEVICE_NOT_CONNECTED;
 
     vector<string> binValues;
+	binValues.push_back("0");
 	binValues.push_back("1");
 	binValues.push_back("2");
+	binValues.push_back("3");
 	if (scanMode_ < 3)
 		binValues.push_back("4");
 	if (scanMode_ < 2)

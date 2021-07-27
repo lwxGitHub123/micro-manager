@@ -344,6 +344,9 @@ private:
 	float           maxGain;                //最大增益值
 	float           minGain;                //最小增益值
 
+	int             binVal ;
+
+
 	//static HNncam g_hcam ;
 	//void* g_pImageData;
 	//unsigned g_total;
