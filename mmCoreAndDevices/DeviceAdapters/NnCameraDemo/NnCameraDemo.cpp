@@ -239,8 +239,8 @@ int nBPB ;
 */
 CNnCameraDemo::CNnCameraDemo():
     CCameraBase<CNnCameraDemo> (),
-	exposureMaximum_(10000.0), 
-    exposureMinimum_(1),
+	exposureMaximum_(2000000.0), 
+    exposureMinimum_(244),
 	maxGain(5000.0),
 	minGain(100.0),
 	binVal(1),
@@ -509,6 +509,23 @@ int CNnCameraDemo::Initialize()
             return nRet;
     }
 
+	// Flip Horizontal
+    int b = 0 ;
+	hr = Nncam_get_HFlip(g_hcam,&b);
+    if (SUCCEEDED(hr))
+    {
+        pAct = new CPropertyAction (this, &CNnCameraDemo::OnFlipH);
+        nRet = CreateProperty(g_PropNameFLPH, "FALSE", MM::String, false, pAct);
+        assert(nRet == DEVICE_OK);
+
+        vector<string> HFlipValues;
+        HFlipValues.push_back("FALSE");
+        HFlipValues.push_back("TRUE");
+
+        nRet = SetAllowedValues(g_PropNameFLPH, HFlipValues);
+        if (nRet != DEVICE_OK)
+            return nRet;
+    }
 
     // Image format
     pAct = new CPropertyAction (this, &CNnCameraDemo::OnImageFormat);
@@ -1038,6 +1055,7 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
             double dblExp;
             pProp->Get(dblExp);          
 
+			dblExp = dblExp * 1000;
             if (dblExp < exposureMinimum_)
             {
                dblExp = exposureMinimum_;
@@ -1051,12 +1069,12 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 			if (FAILED(hr))
 	        {
 		
-	      	   log = "CNnCameraDemo OnExposure!  Nncam_put_ExpoTime failed .";
+	      	   log = "CNnCameraDemo OnExposure!  AfterSet  Nncam_put_ExpoTime failed .";
 	           CUtils::cameraLog(log);
             }
            else
           {
-			 log = " CNnCameraDemo  OnExposure!  Nncam_put_ExpoTime success !  dblExp =  "+  to_string(static_cast<long long>(dblExp))
+			 log = " CNnCameraDemo  OnExposure! AfterSet  Nncam_put_ExpoTime success !  dblExp =  "+  to_string(static_cast<double long>(dblExp))
 				 + "  exposureMinimum_ =  " + to_string(static_cast<long long>(exposureMinimum_)) + "  exposureMaximum_ =  " + to_string(static_cast<long long>(exposureMaximum_));
              CUtils::cameraLog(log);
 			
@@ -1073,23 +1091,48 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 			double dblExpTest;
             pProp->Get(dblExpTest);    
-
-			log = " CNnCameraDemo  OnExposure!  Nncam_get_ExpoTime success ! BeforeGet dblExp1 =  "+  to_string(static_cast<long long>(dblExp1))
-				+"  dblExpTest =  " + to_string(static_cast<long long>(dblExpTest));
+			//dblExpTest =  dblExpTest;
+			dblExp = dblExpTest ;
+			log = " CNnCameraDemo  OnExposure!   success ! BeforeGet dblExp1 =  "+  to_string(static_cast<double long>(dblExp1))
+				+"  dblExpTest =  " + to_string(static_cast<double long>(dblExpTest));
             CUtils::cameraLog(log);
-        
-			HRESULT hr = Nncam_get_ExpoTime(g_hcam,&dblExp1);
-            dblExp = dblExp1 ;
-			pProp->Set(dblExpTest);
+
+            dblExpTest = dblExpTest * 1000 ;
+			if (dblExpTest < exposureMinimum_)
+            {
+               dblExpTest = exposureMinimum_;
+            }
+            else if (dblExpTest > exposureMaximum_) {
+               dblExpTest = exposureMaximum_;
+            }
+			HRESULT hr = Nncam_put_ExpoTime(g_hcam,dblExpTest);
 			if (FAILED(hr))
 	        {
 		
-	      	   log = "CNnCameraDemo OnExposure!  Nncam_get_ExpoTime failed .";
+	      	   log = "CNnCameraDemo OnExposure!  BeforeGet  Nncam_put_ExpoTime failed .";
 	           CUtils::cameraLog(log);
             }
            else
           {
-			 log = " CNnCameraDemo  OnExposure!  Nncam_get_ExpoTime success !  dblExp1 =  "+  to_string(static_cast<long long>(dblExp1));
+			 log = " CNnCameraDemo  OnExposure!  BeforeGet Nncam_put_ExpoTime success !  dblExpTest =  "+  to_string(static_cast<double long>(dblExpTest))
+             + " dblExp =  "  + to_string(static_cast<double long>(dblExp));
+			 CUtils::cameraLog(log);
+			
+			}
+
+			hr = Nncam_get_ExpoTime(g_hcam,&dblExp1);
+            //dblExp = dblExp1 ;
+			
+			pProp->Set(dblExp);
+			if (FAILED(hr))
+	        {
+		
+	      	   log = "CNnCameraDemo OnExposure! BeforeGet  Nncam_get_ExpoTime failed .";
+	           CUtils::cameraLog(log);
+            }
+           else
+          {
+			 log = " CNnCameraDemo  OnExposure! BeforeGet  Nncam_get_ExpoTime success !  dblExp1 =  "+  to_string(static_cast<double long>(dblExp1));
              CUtils::cameraLog(log);
 			
 			}
@@ -1203,18 +1246,18 @@ int CNnCameraDemo::OnATExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 
                 if (SUCCEEDED(hr))
                 {
-					log = " CNnCameraDemo  OnATExposure! Nncam_get_AutoExpoEnable   success ";
+					log = " CNnCameraDemo  OnATExposure! AfterSet  Nncam_get_AutoExpoEnable   success  bAutoExposure = " +  to_string(static_cast<long long>(bAutoExposure));
                     CUtils::cameraLog(log);
                     if (0 == val.compare("TRUE"))
                     {
                         Nncam_put_AutoExpoEnable(g_hcam, 1);
-						log = " CNnCameraDemo  OnATExposure! Nncam_put_AutoExpoEnable  1";
+						log = " CNnCameraDemo  OnATExposure! AfterSet  Nncam_put_AutoExpoEnable  1";
                         CUtils::cameraLog(log);
                     }
                     else
                     {
                         Nncam_put_AutoExpoEnable(g_hcam, 0);
-					    log = " CNnCameraDemo  OnATExposure! Nncam_put_AutoExpoEnable   0";
+					    log = " CNnCameraDemo  OnATExposure! AfterSet  Nncam_put_AutoExpoEnable   0";
                         CUtils::cameraLog(log);
                     }
                 }
@@ -1239,10 +1282,10 @@ int CNnCameraDemo::OnATExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 	        HRESULT hr =  Nncam_get_AutoExpoEnable(g_hcam, &bAutoExposure);
 			pProp->Get(nVal);
 
-			log = " CNnCameraDemo  OnATExposure! BeforeGet  nVal = " + nVal;
+			log = " CNnCameraDemo  OnATExposure! BeforeGet  nVal = " + nVal  + "  bAutoExposure =  " + to_string(static_cast<long long>(bAutoExposure));
             CUtils::cameraLog(log);
 
-            if (0 == nVal.compare("TRUE"))
+            if (1 == bAutoExposure)
             {
                 pProp->Set("TRUE");
             }
@@ -1525,6 +1568,75 @@ int CNnCameraDemo::OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct)
 }
 
 /*
+* Handles "FlipHorizontal" property.
+*/
+int CNnCameraDemo::OnFlipH(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+	
+	string	log = " CNnCameraDemo  OnFlipH!";
+    CUtils::cameraLog(log);
+    if (NULL == g_hcam)
+        return DEVICE_NOT_CONNECTED;
+
+    int ret = DEVICE_ERR;
+    switch(eAct)
+    {
+    case MM::AfterSet:
+        {
+            string val;
+            pProp->Get(val);
+            if (val.length() != 0)
+            {
+				int b = 0 ;
+	            HRESULT hr = Nncam_get_HFlip(g_hcam,&b);
+				log = " CNnCameraDemo  OnFlipH!  AfterSet  b =  "+  to_string(static_cast<long long>(b));
+                CUtils::cameraLog(log);
+                if (SUCCEEDED(hr))
+                {
+                    if (0 == val.compare("TRUE"))
+                    {
+                        Nncam_put_HFlip(g_hcam, 1);
+                    }
+                    else
+                    {
+                        Nncam_put_HFlip(g_hcam, 0);
+                    }
+                }
+
+                OnPropertyChanged(g_PropNameFLPH, val.c_str());
+
+                ret = DEVICE_OK;
+            }
+        }
+        break;
+    case MM::BeforeGet:
+        {
+            int nVal = 0;
+            
+			HRESULT hr = Nncam_get_HFlip(g_hcam,&nVal);
+			log = " CNnCameraDemo  OnFlipH!  BeforeGet  nVal =  "+  to_string(static_cast<long long>(nVal));
+            CUtils::cameraLog(log);
+
+            if (1 == nVal)
+            {
+                pProp->Set("TRUE");
+            }
+            else
+            {
+                pProp->Set("FALSE");
+            }
+
+            ret = DEVICE_OK;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return ret;
+}
+
+/*
 * Handles "Binning" property.
 */
 int CNnCameraDemo::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
@@ -1557,9 +1669,11 @@ int CNnCameraDemo::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 						ReleaseBuffer();
 
                         binVal = atoi(val.c_str()) ;
+						/*
                 		exposureMinimum_ = 10000;
 						exposureMaximum_ = 3600000;
 						SetPropertyLimits(MM::g_Keyword_Exposure, exposureMinimum_, exposureMaximum_);
+						*/
 
 						StartCapture();
 						ResizeImageBuffer();
@@ -2149,14 +2263,16 @@ int CNnCameraDemo::SetBinning(int binF)
 void CNnCameraDemo::SetExposure(double exp)
 {
 
-	string	log = " CNnCameraDemo  SetExposure!   exp =  " + to_string(static_cast<long long>(exp));
+	string	log = " CNnCameraDemo  SetExposure!   exp =  " + to_string(static_cast<double long>(exp));
     CUtils::cameraLog(log);
-    if (exp < exposureMinimum_)
+    exp =  exp * 1000;
+	if (exp < exposureMinimum_)
     {
        exp = exposureMinimum_;
     } else if (exp > exposureMaximum_) {
        exp = exposureMaximum_;
     }
+	exp = exp / 1000.0;
     SetProperty(MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(exp));
     GetCoreCallback()->OnExposureChanged(this, exp);
 }
@@ -2293,13 +2409,16 @@ int CNnCameraDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize
 int CNnCameraDemo::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& ySize)
 {
 
-    string	log = " CNnCameraDemo  GetROI! ";
-    CUtils::cameraLog(log);
+
     x = roiX_;
     y = roiY_;
 
     xSize = img_.Width();
     ySize = img_.Height();
+
+	string	log = " CNnCameraDemo  GetROI!   x =  "  + to_string(static_cast<long long>(x)) + "  y =  " + to_string(static_cast<long long>(y))
+		+ "  xSize =  "  + to_string(static_cast<long long>(xSize))  + "  ySize =  " + to_string(static_cast<long long>(ySize));
+    CUtils::cameraLog(log);
 
     return DEVICE_OK;
 }
@@ -2674,12 +2793,7 @@ int CNnCameraDemo::SetAllowedBinning()
 	//binValues.push_back("0");
 	binValues.push_back("1");
 	binValues.push_back("2");
-	binValues.push_back("3");
-	binValues.push_back("4");
-	binValues.push_back("5");
-	binValues.push_back("6");
-	binValues.push_back("7");
-	binValues.push_back("8");
+	
 
 	/*
 	if (scanMode_ < 3)
