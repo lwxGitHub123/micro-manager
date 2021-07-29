@@ -51,6 +51,7 @@ const char* g_NNDemoDeviceName  = "NNCamDemo";
 const char* g_PropNameFan   = "Fan";
 const char* g_PropNamePCLK  = "PixelClock";
 const char* g_PropNameBODP  = "BitDepth";
+const char* g_PropNameTarget = "Target";
 const char* g_PropNameGain  = "Gain";
 const char* g_PropNameMode  = "Gain";
 const char* g_PropNameFLPH  = "FlipH";
@@ -243,6 +244,8 @@ CNnCameraDemo::CNnCameraDemo():
     exposureMinimum_(244),
 	maxGain(5000.0),
 	minGain(100.0),
+	maxTarget(220.0),
+	minTarget(16.0),
 	binVal(1),
     dPhase_(0),
     initialized_(false),
@@ -484,11 +487,19 @@ int CNnCameraDemo::Initialize()
    nRet = CreateProperty(MM::g_Keyword_Exposure, "10.0", MM::Float, false, pAct);
    assert(nRet == DEVICE_OK);
 
+   //Gain
    pAct = new CPropertyAction (this, &CNnCameraDemo::OnGlobalGain);
    nRet = CreateProperty(g_PropNameGain, "1", MM::Integer, false, pAct);
    assert(nRet == DEVICE_OK);
 
    SetPropertyLimits(g_PropNameGain, minGain, maxGain);
+
+   //Target
+   pAct = new CPropertyAction (this, &CNnCameraDemo::OnGlobalTarget);
+   nRet = CreateProperty(g_PropNameTarget, "100", MM::Integer, false, pAct);
+   assert(nRet == DEVICE_OK);
+
+   SetPropertyLimits(g_PropNameTarget, minTarget, maxTarget);
 
 
     // Auto Exposure
@@ -663,7 +674,7 @@ int CNnCameraDemo::SnapImage()
 				CDeviceUtils::SleepMs((long) exp);
 			}
 			//TUDBG_PRINTF("SnapImage fastImage_ = %d",fastImage_);
-			log = " CNnCameraDemo  SnapImage fastImage_ =  " + to_string(static_cast<long long>(fastImage_));
+			log = " CNnCameraDemo  SnapImage fastImage_ =  " + to_string(static_cast<long long>(fastImage_)) + "   val =  " + to_string(static_cast<long long>(val));
             CUtils::cameraLog(log);
 			WaitForFrame(img_);
 		}
@@ -1065,20 +1076,38 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
             }
 			unsigned dblExp1 = dblExp;
          
-			HRESULT hr = Nncam_put_ExpoTime(g_hcam,dblExp);
-			if (FAILED(hr))
-	        {
+			int bAutoExposure = 0;
+	        HRESULT hr =  Nncam_get_AutoExpoEnable(g_hcam, &bAutoExposure);
+
+			if(0 == bAutoExposure)
+			{
+			   	hr = Nncam_put_ExpoTime(g_hcam,dblExp);
+				if (FAILED(hr))
+				{
 		
-	      	   log = "CNnCameraDemo OnExposure!  AfterSet  Nncam_put_ExpoTime failed .";
+	      		   log = "CNnCameraDemo OnExposure!  AfterSet  Nncam_put_ExpoTime failed .";
+				   CUtils::cameraLog(log);
+				}
+			   else
+			  {
+				 log = " CNnCameraDemo  OnExposure! AfterSet  Nncam_put_ExpoTime success !  dblExp =  "+  to_string(static_cast<double long>(dblExp))
+					 + "  exposureMinimum_ =  " + to_string(static_cast<long long>(exposureMinimum_)) + "  exposureMaximum_ =  " + to_string(static_cast<long long>(exposureMaximum_));
+				 CUtils::cameraLog(log);
+			
+				}
+			}
+			else if(1 == bAutoExposure)
+			{
+				//unsigned short putTarget = 100 ;
+				//Nncam_put_AutoExpoTarget(g_hcam, putTarget);
+				unsigned short  getTarget = 0 ;
+				Nncam_get_AutoExpoTarget(g_hcam,&getTarget);
+
+			   log = "CNnCameraDemo OnExposure!  AfterSet  Nncam_get_AutoExpoEnable success .   getTarget =  " + to_string(static_cast<double long>(getTarget)) ;
 	           CUtils::cameraLog(log);
-            }
-           else
-          {
-			 log = " CNnCameraDemo  OnExposure! AfterSet  Nncam_put_ExpoTime success !  dblExp =  "+  to_string(static_cast<double long>(dblExp))
-				 + "  exposureMinimum_ =  " + to_string(static_cast<long long>(exposureMinimum_)) + "  exposureMaximum_ =  " + to_string(static_cast<long long>(exposureMaximum_));
-             CUtils::cameraLog(log);
 			
 			}
+
 
 
             ret = DEVICE_OK;
@@ -1097,6 +1126,11 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 				+"  dblExpTest =  " + to_string(static_cast<double long>(dblExpTest));
             CUtils::cameraLog(log);
 
+			int bAutoExposure = 0;
+	        HRESULT hr =  Nncam_get_AutoExpoEnable(g_hcam, &bAutoExposure);
+
+
+
             dblExpTest = dblExpTest * 1000 ;
 			if (dblExpTest < exposureMinimum_)
             {
@@ -1105,20 +1139,37 @@ int CNnCameraDemo::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
             else if (dblExpTest > exposureMaximum_) {
                dblExpTest = exposureMaximum_;
             }
-			HRESULT hr = Nncam_put_ExpoTime(g_hcam,dblExpTest);
-			if (FAILED(hr))
-	        {
+
+			if(bAutoExposure == 0)
+			{
+				  hr = Nncam_put_ExpoTime(g_hcam,dblExpTest);
+			  	  if (FAILED(hr))
+				 {
 		
-	      	   log = "CNnCameraDemo OnExposure!  BeforeGet  Nncam_put_ExpoTime failed .";
-	           CUtils::cameraLog(log);
-            }
-           else
-          {
-			 log = " CNnCameraDemo  OnExposure!  BeforeGet Nncam_put_ExpoTime success !  dblExpTest =  "+  to_string(static_cast<double long>(dblExpTest))
-             + " dblExp =  "  + to_string(static_cast<double long>(dblExp));
-			 CUtils::cameraLog(log);
+	      		   log = "CNnCameraDemo OnExposure!  BeforeGet  Nncam_put_ExpoTime failed .";
+				   CUtils::cameraLog(log);
+				}
+			    else
+			   {
+				 log = " CNnCameraDemo  OnExposure!  BeforeGet Nncam_put_ExpoTime success !  dblExpTest =  "+  to_string(static_cast<double long>(dblExpTest))
+				 + " dblExp =  "  + to_string(static_cast<double long>(dblExp));
+				 CUtils::cameraLog(log);
 			
+				}
+
 			}
+			else if(1 == bAutoExposure)
+			{
+			
+			    //unsigned short putTarget = 100 ;
+				//Nncam_put_AutoExpoTarget(g_hcam, putTarget);
+				unsigned short  getTarget = 0 ;
+				Nncam_get_AutoExpoTarget(g_hcam,&getTarget);
+
+			   log = "CNnCameraDemo OnExposure!  BeforeGet  Nncam_get_AutoExpoEnable success .  getTarget =  " + to_string(static_cast<double long>(getTarget)) ;
+	           CUtils::cameraLog(log);
+			}
+			
 
 			hr = Nncam_get_ExpoTime(g_hcam,&dblExp1);
             //dblExp = dblExp1 ;
@@ -1220,6 +1271,82 @@ int CNnCameraDemo::OnGlobalGain(MM::PropertyBase* pProp, MM::ActionType eAct)
     return ret;
 }
 
+/*
+* Handles "OnGlobalTarget" property.
+*/
+int CNnCameraDemo::OnGlobalTarget(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+	string 	log = " CNnCameraDemo  OnGlobalTarget! ";
+    CUtils::cameraLog(log);
+
+    int ret = DEVICE_ERR;
+    switch(eAct)
+    {
+    case MM::AfterSet:
+        {
+            double dblGarget;
+            pProp->Get(dblGarget);          
+
+			unsigned short dblGarget1 = 0;
+
+			int bAutoExposure = 0;
+			Nncam_get_AutoExpoEnable(g_hcam,  &bAutoExposure);
+
+			log = " CNnCameraDemo  OnGlobalTarget! AfterSet  Before  Nncam_get_AutoExpoEnable !  bAutoExposure =  "+  to_string(static_cast<double long>(bAutoExposure));
+            CUtils::cameraLog(log);
+            if(1 == bAutoExposure)
+			{
+				HRESULT hr = Nncam_put_AutoExpoTarget(g_hcam,  dblGarget);
+				if (FAILED(hr))
+				{
+		
+	      		   log = "CNnCameraDemo OnGlobalTarget! AfterSet  Nncam_put_AutoExpoTarget failed .";
+				   CUtils::cameraLog(log);
+				}
+			   else
+			   {
+				 log = " CNnCameraDemo  OnGlobalTarget! AfterSet  Nncam_put_AutoExpoTarget success !  dblGarget =  "+  to_string(static_cast<double long>(dblGarget))
+					 + "  dblGarget1 =  " +  to_string(static_cast<double long>(dblGarget1));
+				 CUtils::cameraLog(log);
+			
+				}
+			}
+
+            ret = DEVICE_OK;
+        }
+        break;
+    case MM::BeforeGet:
+        {
+            double dblGarget = 0.0f;
+			unsigned short dblGarget1 = 0;
+
+            HRESULT hr =  Nncam_get_AutoExpoTarget(g_hcam,  &dblGarget1);
+			if (FAILED(hr))
+	        {
+		
+	      	   log = "CNnCameraDemo OnGlobalTarget!  BeforeGet Nncam_get_AutoExpoTarget failed .";
+	           CUtils::cameraLog(log);
+            }
+           else
+           {
+			 log = " CNnCameraDemo  OnGlobalTarget! BeforeGet  Nncam_get_AutoExpoTarget success !  dblGarget1 =  "+  to_string(static_cast<double long>(dblGarget1));
+             CUtils::cameraLog(log);
+			
+			}
+	
+            dblGarget =  (double)dblGarget1 ;
+			//pProp->Set(dblGarget);
+
+            ret = DEVICE_OK;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return ret;
+}
+
 
 /*
 * Handles "ATExposure" property.
@@ -1251,7 +1378,12 @@ int CNnCameraDemo::OnATExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
                     if (0 == val.compare("TRUE"))
                     {
                         Nncam_put_AutoExpoEnable(g_hcam, 1);
-						log = " CNnCameraDemo  OnATExposure! AfterSet  Nncam_put_AutoExpoEnable  1";
+						unsigned short putTarget = 200 ;
+						//Nncam_put_AutoExpoTarget(g_hcam, putTarget);
+						unsigned short  getTarget = 0 ;
+						Nncam_get_AutoExpoTarget(g_hcam,&getTarget);
+						log = " CNnCameraDemo  OnATExposure! AfterSet  Nncam_put_AutoExpoEnable  1  putTarget =  " 
+							+ to_string(static_cast<double long>(putTarget)) + "  getTarget =  " + to_string(static_cast<double long>(getTarget));
                         CUtils::cameraLog(log);
                     }
                     else
@@ -1263,10 +1395,10 @@ int CNnCameraDemo::OnATExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
                 }
 				else
 				{
-				
+
 						log = " CNnCameraDemo  OnATExposure! Nncam_get_AutoExpoEnable   failed";
                         CUtils::cameraLog(log);
-
+			
 				}
 
                 OnPropertyChanged(g_PropNameATEXP, val.c_str());
@@ -1787,10 +1919,26 @@ bool CNnCameraDemo::IsCapturing()
 
 static void __stdcall EventCallback(unsigned nEvent, void* pCallbackCtx)
 {
-    
-	 string log = " CNnCameraDemo  Enter EventCallback  snapFlag_ =  " + to_string(static_cast<long long>(snapFlag_))
+
+	string log = " CNnCameraDemo  Enter EventCallback  snapFlag_ =  " + to_string(static_cast<long long>(snapFlag_))
 		 + "   g_total =  " + to_string(static_cast<long long>(g_total));
-     CUtils::cameraLog(log);
+    CUtils::cameraLog(log);
+
+	unsigned dblExp=0;
+	HRESULT hr1 = Nncam_get_ExpoTime(g_hcam,&dblExp);
+	if(FAILED(hr1))
+	{
+		log = " CNnCameraDemo  EventCallback!  Nncam_get_ExpoTime failed ";
+        CUtils::cameraLog(log);
+	}
+	else
+	{
+		
+		log = " CNnCameraDemo  EventCallback!  Nncam_get_ExpoTime success  dblExp =  " + to_string(static_cast<long long>(dblExp));
+        CUtils::cameraLog(log);
+	}
+
+
 	if (NNCAM_EVENT_IMAGE == nEvent)
     {
 		if(snapFlag_ == 1)
@@ -2265,7 +2413,12 @@ void CNnCameraDemo::SetExposure(double exp)
 
 	string	log = " CNnCameraDemo  SetExposure!   exp =  " + to_string(static_cast<double long>(exp));
     CUtils::cameraLog(log);
-    exp =  exp * 1000;
+    
+	int bAutoExposure = 0;
+	HRESULT hr =  Nncam_get_AutoExpoEnable(g_hcam, &bAutoExposure);
+
+
+	exp =  exp * 1000;
 	if (exp < exposureMinimum_)
     {
        exp = exposureMinimum_;
@@ -2370,6 +2523,7 @@ int CNnCameraDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize
 
 		Sleep(2);
 		
+		/*
 		unsigned dblExp=0;
 		hr = Nncam_get_ExpoTime(g_hcam,&dblExp);
 		if(FAILED(hr))
@@ -2396,6 +2550,7 @@ int CNnCameraDemo::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize
 		  log = " CNnCameraDemo  SetROI!  Nncam_put_ExpoTime success   dblExp =  " +  to_string(static_cast<long long>(dblExp));
           CUtils::cameraLog(log);
 		}
+		*/
 
     }
 

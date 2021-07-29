@@ -183,6 +183,7 @@ public:
     int OnPixelClock(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnGlobalGain(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnGlobalTarget(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnCMSMode(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnLEDMode(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnGAINMode(MM::PropertyBase* pProp, MM::ActionType eAct);
@@ -343,6 +344,9 @@ private:
 
 	float           maxGain;                //最大增益值
 	float           minGain;                //最小增益值
+
+    float           maxTarget;                //最大自动曝光值
+	float           minTarget;                //最小自动曝光值
 
 	int             binVal ;
 
